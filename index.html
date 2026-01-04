@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WG Putzuhr (Clockwise)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Gochi+Hand&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f4f4f4;
+            --paper-yellow: #FFC107;
+            --paper-green: #8BC34A;
+            --marker-red: #D32F2F;
+            --text-color: #3e2723;
+            --wheel-size: min(90vw, 420px);
+            --font-hand: 'Gochi Hand', cursive;
+        }
+
+        @media (max-width: 600px) {
+            :root { --wheel-size: 85vw; }
+        }
+
+        body {
+            font-family: var(--font-hand);
+            background-color: var(--bg-color);
+            background-image: url('data:image/svg+xml,%3Csvg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath d="M20 20.5V18H0v-2h20v-2H0v-2h20v-2H0V8h20V6H0V4h20V2H0V0h22v20h2V0h2v20h2V0h2v20h2V0h2v20h2v2H22v20h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2H0v-2h20v-2H0v-2h20v-2H0v-2h20z" fill="%23e0e0e0" fill-opacity="0.4" fill-rule="evenodd"/%3E%3C/svg%3E');
+            color: var(--text-color);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            overflow-x: hidden;
+            overflow-y: auto; 
+            padding-bottom: 40px;
+        }
+
+        header {
+            text-align: center;
+            padding-top: 20px;
+            margin-bottom: 10px;
+            z-index: 10;
+            flex-shrink: 0;
+        }
+        h1 { margin: 0; font-size: 1.8rem; letter-spacing: 1px; }
+        .date-display { 
+            font-size: 1.1rem; 
+            margin-top: 5px; 
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 5px 20px;
+            border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+            display: inline-block;
+        }
+
+        .wheel-stage {
+            position: relative;
+            width: var(--wheel-size);
+            height: var(--wheel-size);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 10px 0 30px 0;
+            flex-shrink: 0;
+        }
+
+        .outer-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: var(--paper-yellow);
+            border-radius: 50%;
+            box-shadow: 8px 8px 20px rgba(0,0,0,0.2), inset 2px 2px 10px rgba(255,255,255,0.2);
+            overflow: visible;
+        }
+
+        .deco { position: absolute; opacity: 0.5; pointer-events: none; }
+        .deco-star { font-size: 1.2rem; color: var(--marker-red); }
+        .deco-line { height: 2px; background: var(--text-color); }
+
+        .task-label {
+            position: absolute;
+            font-size: 1rem;
+            font-weight: bold;
+            text-align: center;
+            line-height: 1.1;
+            width: 110px;
+            cursor: pointer;
+            transition: transform 0.2s, color 0.2s;
+            padding: 5px;
+            border-radius: 10px;
+            user-select: none; 
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        @media (max-width: 400px) {
+            .task-label { font-size: 0.8rem; width: 90px; }
+        }
+
+        .task-label:active { transform: scale(0.95); }
+
+        /* --- POSITIONIERUNG DER DIENSTE --- */
+        
+        /* 1. KÜCHE (Oben) */
+        .task-kueche { 
+            top: 2%; left: 50%;
+            transform: translateX(-50%) rotate(-2deg); 
+            font-size: 1.3rem; 
+        }
+        @media (max-width: 400px) { .task-kueche { font-size: 1.1rem; top: 3%; } }
+
+        .task-kueche::before, .task-kueche::after { 
+            content: ''; position: absolute; height: 2px; 
+            background: var(--marker-red); width: 100%; left: 0%; opacity: 0.8;
+            pointer-events: none;
+        }
+        .task-kueche::before { top: 0px; } 
+        .task-kueche::after { bottom: 0px; }
+
+        /* 2. BÖDEN (Rechts Oben) */
+        .task-boeden { top: 25%; right: 2%; transform: rotate(15deg); }
+        
+        /* 3. BAD OBEN (Rechts Unten) */
+        .task-bad-oben { bottom: 15%; right: 5%; transform: rotate(-15deg); }
+        
+        /* 4. BAD UNTEN (Links Unten) */
+        .task-bad-unten { bottom: 15%; left: 5%; transform: rotate(15deg); }
+        
+        /* 5. DRAUSSEN (Links Oben) */
+        .task-draussen { top: 25%; left: 2%; transform: rotate(-15deg); }
+
+
+        .inner-wheel {
+            position: absolute;
+            width: 58%;
+            height: 58%;
+            background-color: var(--paper-green);
+            clip-path: polygon(50% 0%, 98% 35%, 79% 90%, 21% 90%, 2% 35%);
+            box-shadow: 3px 3px 15px rgba(0,0,0,0.2);
+            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .inner-line {
+            position: absolute;
+            width: 1px; height: 45%;
+            background: rgba(0,0,0,0.1);
+            top: 50%; left: 50%;
+            transform-origin: top center;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .center-pin {
+            position: absolute;
+            width: 16px; height: 16px;
+            background: #e0e0e0;
+            border-radius: 50%;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.4), inset 2px 2px 5px rgba(255,255,255,1);
+            z-index: 20;
+            border: 1px solid #aaa;
+        }
+
+        .person-item {
+            position: absolute;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-align: center;
+            top: 50%; left: 50%;
+            transform-origin: center center; 
+            width: 100px; 
+            height: 30px;
+            margin-top: -15px; 
+            margin-left: -50px;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        @media (max-width: 400px) {
+            .person-item { 
+                font-size: 1rem; 
+                width: 90px; 
+                margin-left: -45px; 
+            }
+        }
+
+        .marker-top {
+            position: absolute;
+            top: -15px; left: 50%;
+            transform: translateX(-50%);
+            width: 0; height: 0; 
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 30px solid var(--marker-red);
+            z-index: 30;
+            filter: drop-shadow(2px 3px 3px rgba(0,0,0,0.3));
+        }
+
+        .controls {
+            width: 90%;
+            max-width: 400px;
+            padding: 15px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            border: 2px dashed #ccc;
+            flex-shrink: 0;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            height: 40px; 
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 28px; width: 28px;
+            border-radius: 50%;
+            background: var(--paper-yellow);
+            cursor: pointer;
+            margin-top: -12px;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.4);
+            border: 2px solid var(--text-color);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 6px;
+            cursor: pointer;
+            background: #ccc;
+            border-radius: 3px;
+        }
+
+        .reset-btn {
+            background: var(--paper-yellow);
+            border: 2px solid var(--text-color);
+            color: var(--text-color);
+            padding: 10px 25px;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            font-family: var(--font-hand);
+            box-shadow: 3px 3px 0px rgba(0,0,0,0.15);
+            transition: transform 0.1s;
+        }
+        .reset-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0px rgba(0,0,0,0.15); }
+
+        .kw-big-display {
+            font-size: 1.8rem;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: var(--marker-red);
+        }
+
+        /* --- MODAL --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px);
+            z-index: 100;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .modal-overlay.open { display: flex; opacity: 1; }
+        .modal-content {
+            background: white;
+            width: 85%;
+            max-width: 350px;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+            border: 3px dashed var(--marker-red);
+            transform: scale(0.8);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-overlay.open .modal-content { transform: scale(1); }
+        .modal-title { font-size: 1.6rem; color: var(--marker-red); margin-bottom: 10px; }
+        .modal-icon { font-size: 2.5rem; display: block; margin-bottom: 10px; }
+        .modal-list { text-align: left; list-style: none; padding: 0; font-size: 1.1rem; }
+        .modal-list li { margin-bottom: 8px; padding-left: 20px; position: relative; }
+        .modal-list li::before {
+            content: '✓'; color: var(--paper-green); position: absolute; left: 0; font-weight: bold;
+        }
+        .modal-close {
+            margin-top: 15px;
+            background: #eee; border: none; padding: 10px 30px; border-radius: 20px;
+            font-family: var(--font-hand); font-size: 1.1rem; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Grenadier WG</h1>
+        <div class="date-display" id="dateDisplay">--.-- - --.--</div>
+    </header>
+
+    <div class="wheel-stage">
+        <div class="marker-top"></div>
+
+        <div class="outer-ring">
+            <div class="deco deco-star" style="top:15%; left:25%;">*</div>
+            <div class="deco deco-star" style="top:18%; right:22%;">*</div>
+            <div class="deco deco-star" style="bottom:22%; left:32%;">*</div>
+            <div class="deco deco-star" style="bottom:28%; right:25%;">*</div>
+            <div class="deco deco-line" style="width:25px; top:42%; left:12%; transform:rotate(60deg);"></div>
+            <div class="deco deco-line" style="width:35px; bottom:35%; right:12%; transform:rotate(-45deg);"></div>
+            
+            <div class="task-label task-kueche" onclick="openModal(0)">KÜCHE</div>
+            <div class="task-label task-boeden" onclick="openModal(1)">BÖDEN<br>+ WOHNZI.<br>+ PLANTS</div>
+            <div class="task-label task-bad-oben" onclick="openModal(2)">BAD<br>↑ (OBEN)</div>
+            <div class="task-label task-bad-unten" onclick="openModal(3)">BAD<br>↓ (UNTEN)</div>
+            <div class="task-label task-draussen" onclick="openModal(4)">DRAUSSEN<br>+ TÜCHER<br>+ GLAS</div>
+        </div>
+
+        <div class="inner-wheel" id="innerWheel">
+            <div class="center-pin"></div>
+            <div class="inner-line" style="transform: rotate(0deg)"></div>
+            <div class="inner-line" style="transform: rotate(72deg)"></div>
+            <div class="inner-line" style="transform: rotate(144deg)"></div>
+            <div class="inner-line" style="transform: rotate(216deg)"></div>
+            <div class="inner-line" style="transform: rotate(288deg)"></div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <span class="kw-big-display" id="kwBig">KW --</span>
+        <div class="slider-container">
+            <span style="font-size: 1rem;">-10</span>
+            <input type="range" id="weekSlider" min="-10" max="10" value="0" step="1">
+            <span style="font-size: 1rem;">+10</span>
+        </div>
+        <button class="reset-btn" id="resetBtn">Zurück zu heute</button>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+        <div class="modal-content">
+            <span class="modal-icon" id="modalIcon"></span>
+            <div class="modal-title" id="modalTitle"></div>
+            <ul class="modal-list" id="modalList"></ul>
+            <button class="modal-close" onclick="closeModalDirect()">Schließen</button>
+        </div>
+    </div>
+
+    <script>
+        // REIHENFOLGE IM UHRZEIGERSINN: 
+        // 1. Sarah, 2. Alex, 3. Lea, 4. Leuby, 5. Micha
+        const PEOPLE = ["Sarah", "Alex", "Lea", "Leuby", "Micha"];
+
+        const TASKS = [
+            { 
+                name: "Küche", icon: "🍽️",
+                details: ["Herd & Backofen reinigen", "Spüle putzen", "Arbeitsflächen abwischen", "Müll rausbringen", "Kühlschrank checken"] 
+            },
+            { 
+                name: "Böden & Wohnzimmer", icon: "🧹",
+                details: ["Alle Böden saugen", "Küche & Bad wischen", "Wohnzimmer aufräumen", "Pflanzen gießen", "Staub wischen"] 
+            },
+            { 
+                name: "Bad Oben", icon: "🚽",
+                details: ["Toilette reinigen", "Waschbecken putzen", "Badewanne/Dusche", "Spiegel putzen", "Toilettenpapier auffüllen"] 
+            },
+            { 
+                name: "Bad Unten", icon: "🚿",
+                details: ["Toilette reinigen", "Waschbecken putzen", "Dusche schrubben", "Spiegel putzen", "Boden wischen"] 
+            },
+            { 
+                name: "Draußen & Glas", icon: "🗑️",
+                details: ["Altglas wegbringen", "Handtücher wechseln", "Mülltonnen rausstellen", "Terrasse fegen", "Papier entsorgen"] 
+            }
+        ];
+
+        const innerWheel = document.getElementById('innerWheel');
+        const slider = document.getElementById('weekSlider');
+        const dateDisplay = document.getElementById('dateDisplay');
+        const kwBig = document.getElementById('kwBig');
+        const resetBtn = document.getElementById('resetBtn');
+
+        let currentOffset = 0;
+        
+        // Montag KW 1 2026 (29.12.2025)
+        const REFERENCE_DATE = new Date('2025-12-29T00:00:00');
+
+        function getISOWeek(date) {
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            const dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        }
+
+        function getDateOfISOWeek(w, y) {
+            const simple = new Date(y, 0, 1 + (w - 1) * 7);
+            const dow = simple.getDay();
+            const ISOweekStart = simple;
+            if (dow <= 4) ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+            else ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+            return ISOweekStart;
+        }
+
+        function initWheel() {
+            PEOPLE.forEach((person, index) => {
+                const el = document.createElement('div');
+                el.className = 'person-item';
+                el.innerText = person;
+                el.dataset.baseAngle = index * 72;
+                innerWheel.appendChild(el);
+            });
+        }
+
+        function update() {
+            const now = new Date();
+            const targetDate = new Date();
+            targetDate.setDate(now.getDate() + (currentOffset * 7));
+            
+            const week = getISOWeek(targetDate);
+            const year = targetDate.getFullYear();
+
+            kwBig.innerText = `KW ${week}`;
+            
+            const monday = getDateOfISOWeek(week, year);
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            const opts = { day: '2-digit', month: '2-digit' };
+            dateDisplay.innerText = `${monday.toLocaleDateString('de-DE', opts)} - ${sunday.toLocaleDateString('de-DE', opts)}`;
+
+            const diffTime = now.getTime() - REFERENCE_DATE.getTime();
+            const weeksPassed = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 7));
+            
+            const totalWeeks = weeksPassed + currentOffset;
+
+            // CHANGE: Positive Rotation für Uhrzeigersinn (Plus statt Minus)
+            const rotationAngle = (totalWeeks * 72);
+            innerWheel.style.transform = `rotate(${rotationAngle}deg)`;
+            
+            const personItems = document.querySelectorAll('.person-item');
+            personItems.forEach(el => {
+                const baseAngle = parseFloat(el.dataset.baseAngle);
+                // Center Fix: -170% Abstand (näher zur Mitte)
+                el.style.transform = `rotate(${baseAngle}deg) translate(0, -170%) rotate(${-baseAngle - rotationAngle}deg)`;
+            });
+        }
+
+        slider.addEventListener('input', (e) => {
+            currentOffset = parseInt(e.target.value);
+            update();
+        });
+
+        resetBtn.addEventListener('click', () => {
+            currentOffset = 0;
+            slider.value = 0;
+            update();
+        });
+
+        /* Modal Logic */
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalIcon = document.getElementById('modalIcon');
+        const modalList = document.getElementById('modalList');
+
+        function openModal(index) {
+            const task = TASKS[index];
+            modalTitle.innerText = task.name;
+            modalIcon.innerText = task.icon;
+            modalList.innerHTML = '';
+            task.details.forEach(detail => {
+                const li = document.createElement('li');
+                li.innerText = detail;
+                modalList.appendChild(li);
+            });
+            modalOverlay.classList.add('open');
+        }
+
+        function closeModal(e) {
+            if (e.target === modalOverlay) modalOverlay.classList.remove('open');
+        }
+        function closeModalDirect() {
+            modalOverlay.classList.remove('open');
+        }
+
+        initWheel();
+        update();
+
+    </script>
+</body>
+</html>
