@@ -3,6 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <meta property="og:title" content="WG Putzplan Grenadier">
+    <meta property="og:description" content="Wer ist diese Woche dran? Hier klicken für die Übersicht!">
+    <meta property="og:image" content="https://leubner84.github.io/Putzplan/preview-image.jpg">
+    <meta property="og:url" content="https://leubner84.github.io/Putzplan/">
+    <meta name="twitter:card" content="summary_large_image">
+
     <title>WG Putzuhr</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
@@ -25,7 +32,7 @@
         body {
             font-family: var(--font-hand);
             background-color: var(--bg-color);
-            background-image: url('data:image/svg+xml,%3Csvg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath d="M20 20.5V18H0v-2h20v-2H0v-2h20v-2H0V8h20V6H0V4h20V2H0V0h22v20h2V0h2v20h2V0h2v20h2V0h2v20h2v2H22v20h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2H0v-2h20v-2H0v-2h20v-2H0v-2h20z" fill="%23e0e0e0" fill-opacity="0.4" fill-rule="evenodd"/%3E%3C/svg%3E');
+            background-image: url('data:image/svg+xml,%3Csvg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath d="M20 20.5V18H0v-2h20v-2H0v-2h20v-2H0V8h20V6H0V4h20V2H0V0h22v20h2V0h2v20h2V0h2v20h2V0h2v20h2v2H22v20h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2H0v-2h20v-2H0v-2h20v-2H0v-2h20z" fill="%23e0e0e0" fill-opacity="0.4" fill-rule="evenodd"/%3E%3C/svg%3E');
             color: var(--text-color);
             margin: 0;
             min-height: 100vh;
@@ -367,8 +374,6 @@
 
     <script>
         // --- TELEGRAM INIT ---
-        // Sagt Telegram, dass die App fertig geladen ist
-        // und öffnet sie gleich im Vollbild-Modus.
         if (window.Telegram && window.Telegram.WebApp) {
             window.Telegram.WebApp.ready();
             window.Telegram.WebApp.expand();
@@ -407,14 +412,17 @@
 
         let currentOffset = 0;
         
+        // Referenz: KW1 2026 beginnt am 29.12.2025.
+        // Das Datum ist ein Montag. Wir nutzen es als Anker.
         const REFERENCE_DATE = new Date('2025-12-29T00:00:00');
 
-        function getISOWeek(date) {
-            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-            const dayNum = d.getUTCDay() || 7;
-            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        // Robustere ISO-Wochen Berechnung
+        function getISOWeekAndYear(d) {
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
             const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+            const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+            return { week: weekNo, year: d.getUTCFullYear() };
         }
 
         function getDateOfISOWeek(w, y) {
@@ -437,29 +445,46 @@
         }
 
         function update() {
+            // "Heute" bestimmen und auf 12:00 Uhr mittags normalisieren,
+            // um Probleme mit Sommer-/Winterzeit (23h/25h Tage) zu vermeiden.
             const now = new Date();
-            const targetDate = new Date();
-            targetDate.setDate(now.getDate() + (currentOffset * 7));
-            
-            const week = getISOWeek(targetDate);
-            const year = targetDate.getFullYear();
+            now.setHours(12, 0, 0, 0);
 
-            kwBig.innerText = `KW ${week}`;
+            // Ziel-Datum berechnen (Heute + Slider Offset)
+            const targetDate = new Date(now);
+            targetDate.setDate(targetDate.getDate() + (currentOffset * 7));
             
-            const monday = getDateOfISOWeek(week, year);
+            // KW und Jahr für Anzeige berechnen
+            const isoInfo = getISOWeekAndYear(targetDate);
+
+            kwBig.innerText = `KW ${isoInfo.week}`;
+            
+            // Start (Montag) und Ende (Sonntag) der angezeigten Woche
+            const monday = getDateOfISOWeek(isoInfo.week, isoInfo.year);
             const sunday = new Date(monday);
             sunday.setDate(monday.getDate() + 6);
+            
             const opts = { day: '2-digit', month: '2-digit' };
             dateDisplay.innerText = `${monday.toLocaleDateString('de-DE', opts)} - ${sunday.toLocaleDateString('de-DE', opts)}`;
 
-            const diffTime = now.getTime() - REFERENCE_DATE.getTime();
-            const weeksPassed = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 7));
-            
-            const totalWeeks = weeksPassed + currentOffset;
+            // Berechnung der Rotation:
+            // Wir vergleichen den Montag der Zielwoche mit dem Referenz-Montag.
+            // Beide auf 12:00 Uhr normalisieren für exakte Tages-Differenz.
+            const refMonday = new Date(REFERENCE_DATE);
+            refMonday.setHours(12, 0, 0, 0);
 
-            const rotationAngle = (totalWeeks * 72);
+            const targetMonday = new Date(monday);
+            targetMonday.setHours(12, 0, 0, 0);
+
+            // Differenz in Millisekunden -> Wochen
+            const diffTime = targetMonday.getTime() - refMonday.getTime();
+            const weeksDiff = Math.round(diffTime / (1000 * 60 * 60 * 24 * 7));
+            
+            // Rotation anwenden (72 Grad pro Person/Woche)
+            const rotationAngle = (weeksDiff * 72);
             innerWheel.style.transform = `rotate(${rotationAngle}deg)`;
             
+            // Text der Personen gegenrotieren, damit er gerade steht
             const personItems = document.querySelectorAll('.person-item');
             personItems.forEach(el => {
                 const baseAngle = parseFloat(el.dataset.baseAngle);
@@ -478,6 +503,7 @@
             update();
         });
 
+        // --- MODAL LOGIC ---
         const modalOverlay = document.getElementById('modalOverlay');
         const modalTitle = document.getElementById('modalTitle');
         const modalIcon = document.getElementById('modalIcon');
