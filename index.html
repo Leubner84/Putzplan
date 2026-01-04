@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WG Putzuhr (Clockwise)</title>
+    <title>WG Putzuhr</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Gochi+Hand&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -23,7 +25,7 @@
         body {
             font-family: var(--font-hand);
             background-color: var(--bg-color);
-            background-image: url('data:image/svg+xml,%3Csvg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath d="M20 20.5V18H0v-2h20v-2H0v-2h20v-2H0V8h20V6H0V4h20V2H0V0h22v20h2V0h2v20h2V0h2v20h2V0h2v20h2v2H22v20h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2H0v-2h20v-2H0v-2h20v-2H0v-2h20z" fill="%23e0e0e0" fill-opacity="0.4" fill-rule="evenodd"/%3E%3C/svg%3E');
+            background-image: url('data:image/svg+xml,%3Csvg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath d="M20 20.5V18H0v-2h20v-2H0v-2h20v-2H0V8h20V6H0V4h20V2H0V0h22v20h2V0h2v20h2V0h2v20h2V0h2v20h2v2H22v20h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2H0v-2h20v-2H0v-2h20v-2H0v-2h20z" fill="%23e0e0e0" fill-opacity="0.4" fill-rule="evenodd"/%3E%3C/svg%3E');
             color: var(--text-color);
             margin: 0;
             min-height: 100vh;
@@ -364,30 +366,36 @@
     </div>
 
     <script>
-        // REIHENFOLGE IM UHRZEIGERSINN: 
-        // 1. Sarah, 2. Alex, 3. Lea, 4. Leuby, 5. Micha
+        // --- TELEGRAM INIT ---
+        // Sagt Telegram, dass die App fertig geladen ist
+        // und öffnet sie gleich im Vollbild-Modus.
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.ready();
+            window.Telegram.WebApp.expand();
+        }
+
         const PEOPLE = ["Sarah", "Alex", "Lea", "Leuby", "Micha"];
 
         const TASKS = [
             { 
                 name: "Küche", icon: "🍽️",
-                details: ["Herd reinigen", "Spüle putzen", "Arbeitsflächen abwischen", "Müll rausbringen", "Kühlschrank checken", "Boden wischen"]
+                details: ["Herd & Backofen reinigen", "Spüle putzen", "Arbeitsflächen abwischen", "Müll rausbringen", "Kühlschrank checken"] 
             },
             { 
                 name: "Böden & Wohnzimmer", icon: "🧹",
-                details: ["Wohnzimmer und Flur saugen", "Wohnzimmer aufräumen", "Pflanzen gießen", "Staub wischen"] 
+                details: ["Alle Böden saugen", "Küche & Bad wischen", "Wohnzimmer aufräumen", "Pflanzen gießen", "Staub wischen"] 
             },
             { 
                 name: "Bad Oben", icon: "🚽",
-                details: ["Toilette reinigen", "Waschbecken putzen", "Dusche schrubben", "Spiegel putzen", "Boden wischen", "Mülleimer leeren", "Toilettenpapier auffüllen"] 
+                details: ["Toilette reinigen", "Waschbecken putzen", "Badewanne/Dusche", "Spiegel putzen", "Toilettenpapier auffüllen"] 
             },
             { 
                 name: "Bad Unten", icon: "🚿",
-                details: ["Toilette reinigen", "Waschbecken putzen", "Dusche schrubben", "Spiegel putzen", "Boden wischen", "Mülleimer leeren", "Toilettenpapier auffüllen"] 
+                details: ["Toilette reinigen", "Waschbecken putzen", "Dusche schrubben", "Spiegel putzen", "Boden wischen"] 
             },
             { 
                 name: "Draußen & Glas", icon: "🗑️",
-                details: ["Altglas wegbringen", "Küchen Handtücher waschen", "Terrasse fegen"] 
+                details: ["Altglas wegbringen", "Handtücher wechseln", "Mülltonnen rausstellen", "Terrasse fegen", "Papier entsorgen"] 
             }
         ];
 
@@ -399,7 +407,6 @@
 
         let currentOffset = 0;
         
-        // Montag KW 1 2026 (29.12.2025)
         const REFERENCE_DATE = new Date('2025-12-29T00:00:00');
 
         function getISOWeek(date) {
@@ -450,14 +457,12 @@
             
             const totalWeeks = weeksPassed + currentOffset;
 
-            // CHANGE: Positive Rotation für Uhrzeigersinn (Plus statt Minus)
             const rotationAngle = (totalWeeks * 72);
             innerWheel.style.transform = `rotate(${rotationAngle}deg)`;
             
             const personItems = document.querySelectorAll('.person-item');
             personItems.forEach(el => {
                 const baseAngle = parseFloat(el.dataset.baseAngle);
-                // Center Fix: -170% Abstand (näher zur Mitte)
                 el.style.transform = `rotate(${baseAngle}deg) translate(0, -170%) rotate(${-baseAngle - rotationAngle}deg)`;
             });
         }
@@ -473,7 +478,6 @@
             update();
         });
 
-        /* Modal Logic */
         const modalOverlay = document.getElementById('modalOverlay');
         const modalTitle = document.getElementById('modalTitle');
         const modalIcon = document.getElementById('modalIcon');
@@ -504,5 +508,4 @@
 
     </script>
 </body>
-
 </html>
