@@ -23,10 +23,20 @@
             --text-color: #3e2723;
             --wheel-size: min(90vw, 420px);
             --font-hand: 'Gochi Hand', cursive;
+            --person-radius: 170%; /* Abstand der Namen vom Zentrum */
+            --task-font-size: 1rem;
+            --person-font-size: 1.2rem;
         }
 
         @media (max-width: 600px) {
             :root { --wheel-size: 85vw; }
+        }
+
+        @media (max-width: 400px) {
+            :root {
+                --task-font-size: 0.8rem;
+                --person-font-size: 1rem;
+            }
         }
 
         body {
@@ -73,7 +83,10 @@
             align-items: center;
             margin: 10px 0 30px 0;
             flex-shrink: 0;
+            cursor: grab;
+            touch-action: none; /* verhindert Scroll beim Drehen */
         }
+        .wheel-stage.dragging { cursor: grabbing; }
 
         .outer-ring {
             position: absolute;
@@ -91,7 +104,7 @@
 
         .task-label {
             position: absolute;
-            font-size: 1rem;
+            font-size: var(--task-font-size);
             font-weight: bold;
             text-align: center;
             line-height: 1.1;
@@ -105,54 +118,44 @@
         }
 
         @media (max-width: 400px) {
-            .task-label { font-size: 0.8rem; width: 90px; }
+            .task-label { width: 90px; }
         }
 
+        .task-label:hover { transform: scale(1.05); }
         .task-label:active { transform: scale(0.95); }
 
-        /* --- POSITIONIERUNG DER DIENSTE --- */
-        
-        /* 1. KÜCHE (Oben) */
-        .task-kueche { 
-            top: 2%; left: 50%;
-            transform: translateX(-50%) rotate(-2deg); 
-            font-size: 1.3rem; 
+        /* Küche-Label bekommt Unterstreichung */
+        .task-label[data-index="0"] {
+            font-size: calc(var(--task-font-size) * 1.3);
         }
-        @media (max-width: 400px) { .task-kueche { font-size: 1.1rem; top: 3%; } }
-
-        .task-kueche::before, .task-kueche::after { 
+        .task-label[data-index="0"]::before,
+        .task-label[data-index="0"]::after { 
             content: ''; position: absolute; height: 2px; 
-            background: var(--marker-red); width: 100%; left: 0%; opacity: 0.8;
+            background: var(--marker-red); width: 100%; left: 0; opacity: 0.8;
             pointer-events: none;
         }
-        .task-kueche::before { top: 0px; } 
-        .task-kueche::after { bottom: 0px; }
-
-        /* 2. BÖDEN (Rechts Oben) */
-        .task-boeden { top: 25%; right: 2%; transform: rotate(15deg); }
-        
-        /* 3. BAD OBEN (Rechts Unten) */
-        .task-bad-oben { bottom: 15%; right: 5%; transform: rotate(-15deg); }
-        
-        /* 4. BAD UNTEN (Links Unten) */
-        .task-bad-unten { bottom: 15%; left: 5%; transform: rotate(15deg); }
-        
-        /* 5. DRAUSSEN (Links Oben) */
-        .task-draussen { top: 25%; left: 2%; transform: rotate(-15deg); }
-
+        .task-label[data-index="0"]::before { top: 0; } 
+        .task-label[data-index="0"]::after { bottom: 0; }
 
         .inner-wheel {
             position: absolute;
             width: 58%;
             height: 58%;
             background-color: var(--paper-green);
-            clip-path: polygon(50% 0%, 98% 35%, 79% 90%, 21% 90%, 2% 35%);
+            /* clip-path wird dynamisch per JS gesetzt */
             box-shadow: 3px 3px 15px rgba(0,0,0,0.2);
-            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
             z-index: 5;
             display: flex;
             justify-content: center;
             align-items: center;
+        }
+
+        /* Transition immer aktiv – Dauer wird per CSS-Variable gesteuert */
+        .inner-wheel {
+            transition: transform var(--wheel-speed, 0.6s) cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .inner-wheel .person-item {
+            transition: transform var(--wheel-speed, 0.6s) cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         .inner-line {
@@ -177,7 +180,7 @@
 
         .person-item {
             position: absolute;
-            font-size: 1.2rem;
+            font-size: var(--person-font-size);
             font-weight: bold;
             text-align: center;
             top: 50%; left: 50%;
@@ -188,14 +191,6 @@
             margin-left: -50px;
             z-index: 2;
             pointer-events: none;
-        }
-
-        @media (max-width: 400px) {
-            .person-item { 
-                font-size: 1rem; 
-                width: 90px; 
-                margin-left: -45px; 
-            }
         }
 
         .marker-top {
@@ -275,20 +270,26 @@
             color: var(--marker-red);
         }
 
-        /* --- MODAL --- */
+        /* --- MODAL (Fix: visibility statt display für animierbare Transitions) --- */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.6);
             backdrop-filter: blur(5px);
             z-index: 100;
-            display: none;
+            display: flex;
             justify-content: center;
             align-items: center;
+            visibility: hidden;
             opacity: 0;
-            transition: opacity 0.3s;
+            pointer-events: none;
+            transition: opacity 0.3s, visibility 0.3s;
         }
-        .modal-overlay.open { display: flex; opacity: 1; }
+        .modal-overlay.open {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+        }
         .modal-content {
             background: white;
             width: 85%;
@@ -315,7 +316,9 @@
             margin-top: 15px;
             background: #eee; border: none; padding: 10px 30px; border-radius: 20px;
             font-family: var(--font-hand); font-size: 1.1rem; cursor: pointer;
+            transition: background 0.2s;
         }
+        .modal-close:hover { background: #ddd; }
     </style>
 </head>
 <body>
@@ -327,29 +330,16 @@
 
     <div class="wheel-stage">
         <div class="marker-top"></div>
-
-        <div class="outer-ring">
+        <div class="outer-ring" id="outerRing">
             <div class="deco deco-star" style="top:15%; left:25%;">*</div>
             <div class="deco deco-star" style="top:18%; right:22%;">*</div>
             <div class="deco deco-star" style="bottom:22%; left:32%;">*</div>
             <div class="deco deco-star" style="bottom:28%; right:25%;">*</div>
             <div class="deco deco-line" style="width:25px; top:42%; left:12%; transform:rotate(60deg);"></div>
             <div class="deco deco-line" style="width:35px; bottom:35%; right:12%; transform:rotate(-45deg);"></div>
-            
-            <div class="task-label task-kueche" onclick="openModal(0)">KÜCHE</div>
-            <div class="task-label task-boeden" onclick="openModal(1)">BÖDEN<br>+ WOHNZI.<br>+ PLANTS</div>
-            <div class="task-label task-bad-oben" onclick="openModal(2)">BAD<br>↑ (OBEN)</div>
-            <div class="task-label task-bad-unten" onclick="openModal(3)">BAD<br>↓ (UNTEN)</div>
-            <div class="task-label task-draussen" onclick="openModal(4)">DRAUSSEN<br>+ TÜCHER<br>+ GLAS</div>
         </div>
-
         <div class="inner-wheel" id="innerWheel">
             <div class="center-pin"></div>
-            <div class="inner-line" style="transform: rotate(0deg)"></div>
-            <div class="inner-line" style="transform: rotate(72deg)"></div>
-            <div class="inner-line" style="transform: rotate(144deg)"></div>
-            <div class="inner-line" style="transform: rotate(216deg)"></div>
-            <div class="inner-line" style="transform: rotate(288deg)"></div>
         </div>
     </div>
 
@@ -363,12 +353,12 @@
         <button class="reset-btn" id="resetBtn">Zurück zu heute</button>
     </div>
 
-    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal-overlay" id="modalOverlay">
         <div class="modal-content">
             <span class="modal-icon" id="modalIcon"></span>
             <div class="modal-title" id="modalTitle"></div>
             <ul class="modal-list" id="modalList"></ul>
-            <button class="modal-close" onclick="closeModalDirect()">Schließen</button>
+            <button class="modal-close" id="modalCloseBtn">Schließen</button>
         </div>
     </div>
 
@@ -379,161 +369,337 @@
             window.Telegram.WebApp.expand();
         }
 
+        // =====================================================
+        // KONFIGURATION – alles Anpassbare an einer Stelle
+        // =====================================================
         const PEOPLE = ["Sarah", "Alex", "Lea", "Leuby", "Micha"];
 
         const TASKS = [
             { 
-                name: "Küche", icon: "🍽️",
-                details: ["Herd reinigen", "Spüle putzen", "Arbeitsflächen abwischen", "Müll rausbringen", "Kühlschrank checken", "Boden wischen"] 
+                name: "Küche", icon: "🍽️", shortLabel: "KÜCHE",
+                details: ["Herd & Backofen reinigen", "Spüle putzen", "Arbeitsflächen abwischen", "Müll rausbringen", "Kühlschrank checken"] 
             },
             { 
-                name: "Böden & Wohnzimmer", icon: "🧹",
-                details: ["Wohnzimmer und Flur saugen", "Wohnzimmer aufräumen", "Pflanzen gießen", "Staub wischen"] 
+                name: "Böden & Wohnzimmer", icon: "🧹", shortLabel: "BÖDEN\n+ WOHNZI.\n+ PLANTS",
+                details: ["Alle Böden saugen", "Küche & Bad wischen", "Wohnzimmer aufräumen", "Pflanzen gießen", "Staub wischen"] 
             },
             { 
-                name: "Bad Oben", icon: "🚽",
-                details: ["Toilette reinigen", "Waschbecken putzen", "Dusche schrubben", "Spiegel putzen", "Boden wischen", "Mülleimer leeren", "Toilettenpapier auffüllen"]
+                name: "Bad Oben", icon: "🚽", shortLabel: "BAD\n↑ (OBEN)",
+                details: ["Toilette reinigen", "Waschbecken putzen", "Badewanne/Dusche", "Spiegel putzen", "Toilettenpapier auffüllen"] 
             },
             { 
-                name: "Bad Unten", icon: "🚿",
-                details: ["Toilette reinigen", "Waschbecken putzen", "Dusche schrubben", "Spiegel putzen", "Boden wischen", "Mülleimer leeren", "Toilettenpapier auffüllen"]
+                name: "Bad Unten", icon: "🚿", shortLabel: "BAD\n↓ (UNTEN)",
+                details: ["Toilette reinigen", "Waschbecken putzen", "Dusche schrubben", "Spiegel putzen", "Boden wischen"] 
             },
             { 
-                name: "Draußen & Glas", icon: "🗑️",
-                details: ["Altglas wegbringen", "Küchen Handtücher waschen", "Terrasse fegen"] 
- 
+                name: "Draußen & Glas", icon: "🗑️", shortLabel: "DRAUSSEN\n+ TÜCHER\n+ GLAS",
+                details: ["Altglas wegbringen", "Handtücher wechseln", "Mülltonnen rausstellen", "Terrasse fegen", "Papier entsorgen"] 
             }
         ];
 
-        const innerWheel = document.getElementById('innerWheel');
-        const slider = document.getElementById('weekSlider');
-        const dateDisplay = document.getElementById('dateDisplay');
-        const kwBig = document.getElementById('kwBig');
-        const resetBtn = document.getElementById('resetBtn');
+        // Referenz: KW1 2026 beginnt am Montag 29.12.2025 (12:00 UTC, DST-sicher)
+        const REFERENCE_MONDAY = new Date('2025-12-29T12:00:00Z');
+        const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+
+        // =====================================================
+        // DOM-REFERENZEN
+        // =====================================================
+        const innerWheel   = document.getElementById('innerWheel');
+        const outerRing    = document.getElementById('outerRing');
+        const slider       = document.getElementById('weekSlider');
+        const dateDisplay  = document.getElementById('dateDisplay');
+        const kwBig        = document.getElementById('kwBig');
+        const resetBtn     = document.getElementById('resetBtn');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalTitle   = document.getElementById('modalTitle');
+        const modalIcon    = document.getElementById('modalIcon');
+        const modalList    = document.getElementById('modalList');
+        const modalCloseBtn = document.getElementById('modalCloseBtn');
 
         let currentOffset = 0;
-        
-        // Referenz: KW1 2026 beginnt am 29.12.2025.
-        // Das Datum ist ein Montag. Wir nutzen es als Anker.
-        const REFERENCE_DATE = new Date('2025-12-29T00:00:00');
+        const count = PEOPLE.length;
+        const sliceAngle = 360 / count;
 
-        // Robustere ISO-Wochen Berechnung
-        function getISOWeekAndYear(d) {
-            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-            const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-            return { week: weekNo, year: d.getUTCFullYear() };
+        // =====================================================
+        // DYNAMISCHES SETUP – Fünfeck, Linien, Labels, Personen
+        // =====================================================
+
+        /** Erzeugt einen CSS clip-path Polygon-String für n Ecken */
+        function generatePolygonPath(n) {
+            const points = [];
+            for (let i = 0; i < n; i++) {
+                // Startwinkel -90° damit erste Spitze oben liegt
+                const angle = (i * 360 / n) - 90;
+                const rad = angle * Math.PI / 180;
+                const x = 50 + 48 * Math.cos(rad);
+                const y = 50 + 48 * Math.sin(rad);
+                points.push(`${x.toFixed(1)}% ${y.toFixed(1)}%`);
+            }
+            return `polygon(${points.join(', ')})`;
         }
 
-        function getDateOfISOWeek(w, y) {
-            const simple = new Date(y, 0, 1 + (w - 1) * 7);
-            const dow = simple.getDay();
-            const ISOweekStart = simple;
-            if (dow <= 4) ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
-            else ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
-            return ISOweekStart;
-        }
+        function initInnerWheel() {
+            // Dynamischer clip-path
+            innerWheel.style.clipPath = generatePolygonPath(count);
 
-        function initWheel() {
-            PEOPLE.forEach((person, index) => {
+            // Trennlinien
+            for (let i = 0; i < count; i++) {
+                const line = document.createElement('div');
+                line.className = 'inner-line';
+                line.style.transform = `rotate(${i * sliceAngle}deg)`;
+                innerWheel.appendChild(line);
+            }
+
+            // Personen-Labels
+            PEOPLE.forEach((person, i) => {
                 const el = document.createElement('div');
                 el.className = 'person-item';
-                el.innerText = person;
-                el.dataset.baseAngle = index * 72;
+                el.textContent = person;
+                el.dataset.baseAngle = i * sliceAngle;
                 innerWheel.appendChild(el);
             });
         }
 
-        function update() {
-            // "Heute" bestimmen und auf 12:00 Uhr mittags normalisieren,
-            // um Probleme mit Sommer-/Winterzeit (23h/25h Tage) zu vermeiden.
-            const now = new Date();
-            now.setHours(12, 0, 0, 0);
+        /** Positioniert Task-Labels trigonometrisch um den Outer Ring */
+        function initTaskLabels() {
+            // Offset: erstes Label oben (270° = -90°), dann im Uhrzeigersinn
+            const startAngle = -90;
+            const labelRadius = 0.35; // Anteil des Radius (0 = Mitte, 0.5 = Rand)
 
-            // Ziel-Datum berechnen (Heute + Slider Offset)
-            const targetDate = new Date(now);
-            targetDate.setDate(targetDate.getDate() + (currentOffset * 7));
-            
-            // KW und Jahr für Anzeige berechnen
-            const isoInfo = getISOWeekAndYear(targetDate);
+            TASKS.forEach((task, i) => {
+                const el = document.createElement('div');
+                el.className = 'task-label';
+                el.dataset.index = i;
+                el.innerHTML = task.shortLabel.replace(/\n/g, '<br>');
 
-            kwBig.innerText = `KW ${isoInfo.week}`;
-            
-            // Start (Montag) und Ende (Sonntag) der angezeigten Woche
-            const monday = getDateOfISOWeek(isoInfo.week, isoInfo.year);
-            const sunday = new Date(monday);
-            sunday.setDate(monday.getDate() + 6);
-            
-            const opts = { day: '2-digit', month: '2-digit' };
-            dateDisplay.innerText = `${monday.toLocaleDateString('de-DE', opts)} - ${sunday.toLocaleDateString('de-DE', opts)}`;
+                const angle = startAngle + i * sliceAngle;
+                const rad = angle * Math.PI / 180;
+                // Prozentuale Position relativ zum Outer Ring
+                const x = 50 + labelRadius * 100 * Math.cos(rad);
+                const y = 50 + labelRadius * 100 * Math.sin(rad);
 
-            // Berechnung der Rotation:
-            // Wir vergleichen den Montag der Zielwoche mit dem Referenz-Montag.
-            // Beide auf 12:00 Uhr normalisieren für exakte Tages-Differenz.
-            const refMonday = new Date(REFERENCE_DATE);
-            refMonday.setHours(12, 0, 0, 0);
+                el.style.left = `${x}%`;
+                el.style.top = `${y}%`;
+                el.style.transform = 'translate(-50%, -50%)';
 
-            const targetMonday = new Date(monday);
-            targetMonday.setHours(12, 0, 0, 0);
-
-            // Differenz in Millisekunden -> Wochen
-            const diffTime = targetMonday.getTime() - refMonday.getTime();
-            const weeksDiff = Math.round(diffTime / (1000 * 60 * 60 * 24 * 7));
-            
-            // Rotation anwenden (72 Grad pro Person/Woche)
-            const rotationAngle = (weeksDiff * 72);
-            innerWheel.style.transform = `rotate(${rotationAngle}deg)`;
-            
-            // Text der Personen gegenrotieren, damit er gerade steht
-            const personItems = document.querySelectorAll('.person-item');
-            personItems.forEach(el => {
-                const baseAngle = parseFloat(el.dataset.baseAngle);
-                el.style.transform = `rotate(${baseAngle}deg) translate(0, -170%) rotate(${-baseAngle - rotationAngle}deg)`;
+                el.addEventListener('click', (e) => {
+                    // Nicht öffnen wenn gerade gedreht wurde
+                    if (wasDragged) { e.preventDefault(); return; }
+                    openModal(i);
+                });
+                outerRing.appendChild(el);
             });
         }
 
-        slider.addEventListener('input', (e) => {
-            currentOffset = parseInt(e.target.value);
+        // =====================================================
+        // WOCHEN-BERECHNUNG – eine einzige Quelle der Wahrheit
+        // =====================================================
+
+        /**
+         * Berechnet Montag der Zielwoche und die Wochen-Differenz zur Referenz.
+         * Alles basiert auf REFERENCE_MONDAY – keine doppelte Berechnung.
+         */
+        function getTargetWeekInfo(weekOffset) {
+            // Heute auf Mittag normalisieren (DST-sicher)
+            const now = new Date();
+            now.setHours(12, 0, 0, 0);
+
+            // Montag der aktuellen Woche finden
+            const day = now.getDay(); // 0=So, 1=Mo, ...
+            const diffToMonday = day === 0 ? -6 : 1 - day;
+            const currentMonday = new Date(now);
+            currentMonday.setDate(now.getDate() + diffToMonday);
+            currentMonday.setHours(12, 0, 0, 0);
+
+            // Offset anwenden
+            const targetMonday = new Date(currentMonday);
+            targetMonday.setDate(currentMonday.getDate() + weekOffset * 7);
+
+            // Sonntag dieser Woche
+            const targetSunday = new Date(targetMonday);
+            targetSunday.setDate(targetMonday.getDate() + 6);
+
+            // Wochen-Differenz zur Referenz (ganzzahlig, DST-safe durch Mittags-Normalisierung)
+            const weeksDiff = Math.round(
+                (targetMonday.getTime() - REFERENCE_MONDAY.getTime()) / MS_PER_WEEK
+            );
+
+            // ISO-Wochennummer ableiten
+            const isoInfo = getISOWeekNumber(targetMonday);
+
+            return { targetMonday, targetSunday, weeksDiff, isoWeek: isoInfo.week };
+        }
+
+        /** ISO 8601 Wochennummer */
+        function getISOWeekNumber(date) {
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            const weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+            return { week: weekNo, year: d.getUTCFullYear() };
+        }
+
+        // =====================================================
+        // UPDATE – Rad drehen und Anzeige aktualisieren
+        // =====================================================
+
+        function update() {
+            const info = getTargetWeekInfo(currentOffset);
+
+            // Anzeige
+            kwBig.textContent = `KW ${info.isoWeek}`;
+            const opts = { day: '2-digit', month: '2-digit' };
+            dateDisplay.textContent = 
+                `${info.targetMonday.toLocaleDateString('de-DE', opts)} - ${info.targetSunday.toLocaleDateString('de-DE', opts)}`;
+
+            // Rotation (eine Scheibe pro Woche = sliceAngle Grad)
+            const rotationAngle = info.weeksDiff * sliceAngle;
+            innerWheel.style.transform = `rotate(${rotationAngle}deg)`;
+
+            // Personen-Text gegenrotieren
+            document.querySelectorAll('.person-item').forEach(el => {
+                const base = parseFloat(el.dataset.baseAngle);
+                el.style.transform = `rotate(${base}deg) translate(0, -${170}%) rotate(${-base - rotationAngle}deg)`;
+            });
+        }
+
+        // =====================================================
+        // EVENT-HANDLING
+        // =====================================================
+
+        // Slider: kürzere Transition beim Schieben, längere beim Reset
+        function setWheelSpeed(speed) {
+            innerWheel.style.setProperty('--wheel-speed', speed);
+        }
+
+        slider.addEventListener('mousedown',  () => setWheelSpeed('0.25s'));
+        slider.addEventListener('touchstart', () => setWheelSpeed('0.25s'), { passive: true });
+
+        slider.addEventListener('input', () => {
+            currentOffset = parseInt(slider.value);
             update();
         });
 
+        function endSlide() {
+            setWheelSpeed('0.6s');
+        }
+        slider.addEventListener('mouseup', endSlide);
+        slider.addEventListener('touchend', endSlide);
+
         resetBtn.addEventListener('click', () => {
+            setWheelSpeed('0.6s');
             currentOffset = 0;
             slider.value = 0;
             update();
         });
 
-        // --- MODAL LOGIC ---
-        const modalOverlay = document.getElementById('modalOverlay');
-        const modalTitle = document.getElementById('modalTitle');
-        const modalIcon = document.getElementById('modalIcon');
-        const modalList = document.getElementById('modalList');
+        // =====================================================
+        // DRAG-TO-ROTATE (Maus + Touch)
+        // =====================================================
+        const wheelStage = document.querySelector('.wheel-stage');
+        let isDragging = false;
+        let wasDragged = false;
+        let dragStartAngle = 0;
+        let dragStartOffset = 0;
 
+        /** Winkel in Grad vom Mittelpunkt des Rads zum Pointer */
+        function getAngleFromCenter(clientX, clientY) {
+            const rect = wheelStage.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            return Math.atan2(clientY - cy, clientX - cx) * (180 / Math.PI);
+        }
+
+        function dragStart(clientX, clientY) {
+            isDragging = true;
+            wasDragged = false;
+            dragStartAngle = getAngleFromCenter(clientX, clientY);
+            dragStartOffset = currentOffset;
+            setWheelSpeed('0.15s');
+            wheelStage.classList.add('dragging');
+        }
+
+        function dragMove(clientX, clientY) {
+            if (!isDragging) return;
+            const currentAngle = getAngleFromCenter(clientX, clientY);
+            let delta = currentAngle - dragStartAngle;
+            if (delta > 180) delta -= 360;
+            if (delta < -180) delta += 360;
+            const weekDelta = Math.round(delta / sliceAngle);
+            if (weekDelta !== 0) wasDragged = true;
+            const newOffset = dragStartOffset + weekDelta;
+            const clamped = Math.max(-10, Math.min(10, newOffset));
+            if (clamped !== currentOffset) {
+                currentOffset = clamped;
+                slider.value = currentOffset;
+                update();
+            }
+        }
+
+        function dragEnd() {
+            if (!isDragging) return;
+            isDragging = false;
+            setWheelSpeed('0.6s');
+            wheelStage.classList.remove('dragging');
+            // wasDragged wird nach dem nächsten Click-Event zurückgesetzt
+            setTimeout(() => { wasDragged = false; }, 50);
+        }
+
+        // Mouse Events
+        wheelStage.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            dragStart(e.clientX, e.clientY);
+        });
+        window.addEventListener('mousemove', (e) => dragMove(e.clientX, e.clientY));
+        window.addEventListener('mouseup', dragEnd);
+
+        // Touch Events
+        wheelStage.addEventListener('touchstart', (e) => {
+            const t = e.touches[0];
+            dragStart(t.clientX, t.clientY);
+        }, { passive: true });
+        window.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            const t = e.touches[0];
+            dragMove(t.clientX, t.clientY);
+        }, { passive: true });
+        window.addEventListener('touchend', dragEnd);
+        window.addEventListener('touchcancel', dragEnd);
+
+        // --- MODAL ---
         function openModal(index) {
             const task = TASKS[index];
-            modalTitle.innerText = task.name;
-            modalIcon.innerText = task.icon;
+            modalTitle.textContent = task.name;
+            modalIcon.textContent = task.icon;
             modalList.innerHTML = '';
             task.details.forEach(detail => {
                 const li = document.createElement('li');
-                li.innerText = detail;
+                li.textContent = detail;
                 modalList.appendChild(li);
             });
             modalOverlay.classList.add('open');
         }
 
-        function closeModal(e) {
-            if (e.target === modalOverlay) modalOverlay.classList.remove('open');
-        }
-        function closeModalDirect() {
+        function closeModal() {
             modalOverlay.classList.remove('open');
         }
 
-        initWheel();
-        update();
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) closeModal();
+        });
+        modalCloseBtn.addEventListener('click', closeModal);
 
+        // ESC schließt Modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // =====================================================
+        // INIT
+        // =====================================================
+        initInnerWheel();
+        initTaskLabels();
+        update();
     </script>
 </body>
 </html>
-
