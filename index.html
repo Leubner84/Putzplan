@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
+
     <meta property="og:title" content="WG Putzplan Grenadier">
     <meta property="og:description" content="Wer ist diese Woche dran? Hier klicken für die Übersicht!">
     <meta property="og:image" content="https://leubner84.github.io/Putzplan/preview-image.jpg">
@@ -12,7 +12,7 @@
 
     <title>WG Putzuhr</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
+
     <link href="https://fonts.googleapis.com/css2?family=Gochi+Hand&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -21,11 +21,14 @@
             --paper-green: #8BC34A;
             --marker-red: #D32F2F;
             --text-color: #3e2723;
+            --card-bg: #fffdf6;
             --wheel-size: min(90vw, 420px);
             --font-hand: 'Gochi Hand', cursive;
-            --person-radius: 170%; /* Abstand der Namen vom Zentrum */
+            --person-radius: calc(var(--wheel-size) * 0.145); /* Abstand der Namen vom Zentrum, wächst mit dem Rad */
             --task-font-size: 1rem;
             --person-font-size: 1.2rem;
+            /* Papierkörnung als Overlay für Rad und Karten */
+            --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.2 0 0 0 0 0.1 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
         }
 
         @media (max-width: 600px) {
@@ -51,9 +54,17 @@
             align-items: center;
             justify-content: flex-start;
             overflow-x: hidden;
-            overflow-y: auto; 
+            overflow-y: auto;
             padding-bottom: 40px;
         }
+
+        button {
+            font-family: var(--font-hand);
+            color: var(--text-color);
+            -webkit-tap-highlight-color: transparent;
+        }
+        button:focus { outline: none; }
+        button:focus-visible { outline: 2px dashed var(--marker-red); outline-offset: 3px; }
 
         header {
             text-align: center;
@@ -63,9 +74,9 @@
             flex-shrink: 0;
         }
         h1 { margin: 0; font-size: 1.8rem; letter-spacing: 1px; }
-        .date-display { 
-            font-size: 1.1rem; 
-            margin-top: 5px; 
+        .date-display {
+            font-size: 1.1rem;
+            margin-top: 5px;
             font-weight: bold;
             background: rgba(255, 255, 255, 0.8);
             padding: 5px 20px;
@@ -81,7 +92,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            margin: 10px 0 30px 0;
+            margin: 10px 0 10px 0;
             flex-shrink: 0;
             cursor: grab;
             touch-action: none; /* verhindert Scroll beim Drehen */
@@ -92,9 +103,9 @@
             position: absolute;
             width: 100%;
             height: 100%;
-            background-color: var(--paper-yellow);
+            background: var(--paper-grain), var(--paper-yellow);
             border-radius: 50%;
-            box-shadow: 8px 8px 20px rgba(0,0,0,0.2), inset 2px 2px 10px rgba(255,255,255,0.2);
+            box-shadow: 8px 8px 20px rgba(0,0,0,0.2), inset 2px 2px 10px rgba(255,255,255,0.25), inset -3px -3px 8px rgba(0,0,0,0.06);
             overflow: visible;
         }
 
@@ -108,51 +119,48 @@
             font-weight: bold;
             text-align: center;
             line-height: 1.1;
-            width: 110px;
+            /* Breite passt sich dem Text an, Zeilenumbrüche nur per <br> */
+            width: max-content;
+            white-space: nowrap;
+            background: none;
+            border: none;
             cursor: pointer;
+            /* --label-shift wird per JS gesetzt (Position), Skalierung kommt dazu */
+            transform: var(--label-shift);
             transition: transform 0.2s, color 0.2s;
-            padding: 5px;
+            padding: 4px 6px;
             border-radius: 10px;
-            user-select: none; 
-            -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
-
-        @media (max-width: 400px) {
-            .task-label { width: 90px; }
+        .task-label:hover { transform: var(--label-shift) scale(1.06); }
+        .task-label:active { transform: var(--label-shift) scale(0.94); }
+        .task-icon {
+            display: block;
+            font-size: 1.5em;
+            line-height: 1.15;
+            transition: transform 0.2s;
         }
-
-        .task-label:hover { transform: scale(1.05); }
-        .task-label:active { transform: scale(0.95); }
-
-        /* Küche-Label bekommt Unterstreichung */
-        .task-label[data-index="0"] {
-            font-size: calc(var(--task-font-size) * 1.3);
-        }
-        .task-label[data-index="0"]::before,
-        .task-label[data-index="0"]::after { 
-            content: ''; position: absolute; height: 2px; 
-            background: var(--marker-red); width: 100%; left: 0; opacity: 0.8;
-            pointer-events: none;
-        }
-        .task-label[data-index="0"]::before { top: 0; } 
-        .task-label[data-index="0"]::after { bottom: 0; }
+        .task-label:hover .task-icon { transform: rotate(-8deg); }
+        /* Eigene Aufgabe (Telegram-Nutzer): rot markiert */
+        .task-label.mine { color: var(--marker-red); }
 
         .inner-wheel {
             position: absolute;
-            width: 58%;
-            height: 58%;
-            background-color: var(--paper-green);
-            /* clip-path wird dynamisch per JS gesetzt */
-            box-shadow: 3px 3px 15px rgba(0,0,0,0.2);
+            width: 50%;
+            height: 50%;
+            /* Fünfeck-Form steckt in .inner-shape (clip-path per JS) */
             z-index: 5;
             display: flex;
             justify-content: center;
             align-items: center;
-        }
-
-        /* Transition immer aktiv – Dauer wird per CSS-Variable gesteuert */
-        .inner-wheel {
+            filter: drop-shadow(3px 4px 6px rgba(0,0,0,0.25));
+            /* Transition immer aktiv – Dauer wird per CSS-Variable gesteuert */
             transition: transform var(--wheel-speed, 0.6s) cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .inner-shape {
+            position: absolute;
+            inset: 0;
+            background: var(--paper-grain), var(--paper-green);
         }
         .inner-wheel .person-item {
             transition: transform var(--wheel-speed, 0.6s) cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -160,22 +168,22 @@
 
         .inner-line {
             position: absolute;
-            width: 1px; height: 45%;
-            background: rgba(0,0,0,0.1);
+            width: 1px; height: 38.5%;
+            background: rgba(0,0,0,0.12);
             top: 50%; left: 50%;
             transform-origin: top center;
             z-index: 0;
             pointer-events: none;
         }
 
+        /* Musterbeutelklammer aus Messing */
         .center-pin {
             position: absolute;
-            width: 16px; height: 16px;
-            background: #e0e0e0;
+            width: 20px; height: 20px;
+            background: radial-gradient(circle at 35% 35%, #fff4c2 0%, #d9a923 45%, #8a6508 100%);
             border-radius: 50%;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.4), inset 2px 2px 5px rgba(255,255,255,1);
+            box-shadow: 1px 2px 4px rgba(0,0,0,0.45);
             z-index: 20;
-            border: 1px solid #aaa;
         }
 
         .person-item {
@@ -184,20 +192,27 @@
             font-weight: bold;
             text-align: center;
             top: 50%; left: 50%;
-            transform-origin: center center; 
-            width: 100px; 
+            transform-origin: center center;
+            width: 100px;
             height: 30px;
-            margin-top: -15px; 
+            margin-top: -15px;
             margin-left: -50px;
             z-index: 2;
             pointer-events: none;
+        }
+        .person-item span { padding: 0 5px; }
+        /* Eigener Name (Telegram-Nutzer): mit Marker umkringelt */
+        .person-item.me span {
+            color: var(--marker-red);
+            border: 2px solid var(--marker-red);
+            border-radius: 55% 45% 50% 40% / 45% 55% 40% 50%;
         }
 
         .marker-top {
             position: absolute;
             top: -15px; left: 50%;
             transform: translateX(-50%);
-            width: 0; height: 0; 
+            width: 0; height: 0;
             border-left: 15px solid transparent;
             border-right: 15px solid transparent;
             border-top: 30px solid var(--marker-red);
@@ -205,16 +220,36 @@
             filter: drop-shadow(2px 3px 3px rgba(0,0,0,0.3));
         }
 
+        .tap-hint {
+            margin: 4px 0 16px;
+            font-size: 0.95rem;
+            opacity: 0.55;
+            text-align: center;
+        }
+
         .controls {
             width: 90%;
             max-width: 400px;
             padding: 15px;
-            background: rgba(255,255,255,0.9);
+            background: var(--card-bg) var(--paper-grain);
             border-radius: 20px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             text-align: center;
             border: 2px dashed #ccc;
             flex-shrink: 0;
+        }
+
+        .kw-big-display {
+            font-size: 1.8rem;
+            font-weight: bold;
+            display: block;
+            line-height: 1.1;
+            color: var(--marker-red);
+        }
+        .week-relative {
+            display: block;
+            font-size: 1.05rem;
+            opacity: 0.7;
         }
 
         .slider-container {
@@ -229,8 +264,9 @@
             -webkit-appearance: none;
             width: 100%;
             background: transparent;
-            height: 40px; 
+            height: 40px;
         }
+        input[type=range]:focus { outline: none; }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
             height: 28px; width: 28px;
@@ -251,30 +287,22 @@
         .reset-btn {
             background: var(--paper-yellow);
             border: 2px solid var(--text-color);
-            color: var(--text-color);
             padding: 10px 25px;
             border-radius: 25px;
             font-size: 1rem;
             cursor: pointer;
-            font-family: var(--font-hand);
             box-shadow: 3px 3px 0px rgba(0,0,0,0.15);
-            transition: transform 0.1s;
+            transition: transform 0.1s, opacity 0.2s;
         }
         .reset-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0px rgba(0,0,0,0.15); }
+        /* In der aktuellen Woche blass, da ohne Funktion */
+        .reset-btn.hidden { opacity: 0.35; pointer-events: none; box-shadow: none; }
 
-        .kw-big-display {
-            font-size: 1.8rem;
-            font-weight: bold;
-            display: block;
-            margin-bottom: 5px;
-            color: var(--marker-red);
-        }
-
-        /* --- MODAL (Fix: visibility statt display für animierbare Transitions) --- */
+        /* --- MODAL (visibility statt display für animierbare Transitions) --- */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6);
+            background: rgba(0,0,0,0.55);
             backdrop-filter: blur(5px);
             z-index: 100;
             display: flex;
@@ -291,7 +319,7 @@
             pointer-events: auto;
         }
         .modal-content {
-            background: white;
+            background: var(--card-bg) var(--paper-grain);
             width: 85%;
             max-width: 350px;
             padding: 20px;
@@ -299,26 +327,31 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             text-align: center;
             border: 3px dashed var(--marker-red);
-            transform: scale(0.8);
+            transform: scale(0.8) rotate(-2deg);
             transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             max-height: 80vh;
             overflow-y: auto;
         }
-        .modal-overlay.open .modal-content { transform: scale(1); }
-        .modal-title { font-size: 1.6rem; color: var(--marker-red); margin-bottom: 10px; }
-        .modal-icon { font-size: 2.5rem; display: block; margin-bottom: 10px; }
+        .modal-overlay.open .modal-content { transform: scale(1) rotate(-0.5deg); }
+        .modal-title { font-size: 1.6rem; color: var(--marker-red); margin-bottom: 2px; }
+        .modal-sub { font-size: 1.1rem; opacity: 0.75; margin-bottom: 6px; }
+        .modal-icon { font-size: 2.5rem; display: block; margin-bottom: 6px; }
         .modal-list { text-align: left; list-style: none; padding: 0; font-size: 1.1rem; }
-        .modal-list li { margin-bottom: 8px; padding-left: 20px; position: relative; }
+        .modal-list li { margin-bottom: 8px; padding-left: 22px; position: relative; }
         .modal-list li::before {
             content: '✓'; color: var(--paper-green); position: absolute; left: 0; font-weight: bold;
         }
         .modal-close {
-            margin-top: 15px;
-            background: #eee; border: none; padding: 10px 30px; border-radius: 20px;
-            font-family: var(--font-hand); font-size: 1.1rem; cursor: pointer;
-            transition: background 0.2s;
+            margin-top: 12px;
+            background: var(--paper-yellow);
+            border: 2px solid var(--text-color);
+            padding: 8px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            box-shadow: 3px 3px 0 rgba(0,0,0,0.15);
         }
-        .modal-close:hover { background: #ddd; }
+        .modal-close:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(0,0,0,0.15); }
     </style>
 </head>
 <body>
@@ -333,18 +366,21 @@
         <div class="outer-ring" id="outerRing">
             <div class="deco deco-star" style="top:15%; left:25%;">*</div>
             <div class="deco deco-star" style="top:18%; right:22%;">*</div>
-            <div class="deco deco-star" style="bottom:22%; left:32%;">*</div>
-            <div class="deco deco-star" style="bottom:28%; right:25%;">*</div>
-            <div class="deco deco-line" style="width:25px; top:42%; left:12%; transform:rotate(60deg);"></div>
-            <div class="deco deco-line" style="width:35px; bottom:35%; right:12%; transform:rotate(-45deg);"></div>
+            <div class="deco deco-star" style="bottom:10%; left:48%;">*</div>
+            <div class="deco deco-line" style="width:25px; top:64%; left:10%; transform:rotate(60deg);"></div>
+            <div class="deco deco-line" style="width:30px; top:64%; right:9%; transform:rotate(-55deg);"></div>
         </div>
         <div class="inner-wheel" id="innerWheel">
+            <div class="inner-shape" id="innerShape"></div>
             <div class="center-pin"></div>
         </div>
     </div>
 
+    <p class="tap-hint" id="tapHint"></p>
+
     <div class="controls">
         <span class="kw-big-display" id="kwBig">KW --</span>
+        <span class="week-relative" id="weekRelative"></span>
         <div class="slider-container">
             <span style="font-size: 1rem;">-10</span>
             <input type="range" id="weekSlider" min="-10" max="10" value="0" step="1">
@@ -354,9 +390,10 @@
     </div>
 
     <div class="modal-overlay" id="modalOverlay">
-        <div class="modal-content">
+        <div class="modal-content" role="dialog" aria-modal="true">
             <span class="modal-icon" id="modalIcon"></span>
             <div class="modal-title" id="modalTitle"></div>
+            <div class="modal-sub" id="modalSub"></div>
             <ul class="modal-list" id="modalList"></ul>
             <button class="modal-close" id="modalCloseBtn">Schließen</button>
         </div>
@@ -364,9 +401,20 @@
 
     <script>
         // --- TELEGRAM INIT ---
-        if (window.Telegram && window.Telegram.WebApp) {
-            window.Telegram.WebApp.ready();
-            window.Telegram.WebApp.expand();
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
+            // Kopf- und Hintergrundfarbe an die Seite anpassen
+            tg.setHeaderColor?.('#f4f4f4');
+            tg.setBackgroundColor?.('#f4f4f4');
+            // Sonst schließt ein vertikales Wischen am Rad die Mini-App
+            tg.disableVerticalSwipes?.();
+        }
+
+        /** Kurzes Vibrieren in Telegram (außerhalb wirkungslos) */
+        function haptic() {
+            try { tg?.HapticFeedback?.selectionChanged(); } catch (e) {}
         }
 
         // =====================================================
@@ -374,28 +422,89 @@
         // =====================================================
         const PEOPLE = ["Kamilla", "Alex", "Lea", "Leuby", "Micha"];
 
+        // Telegram-Account → Name im Plan, damit jeder seinen eigenen Namen markiert sieht.
+        // Schlüssel: Telegram-Vorname (erstes Wort), Username (ohne @) oder numerische User-ID, klein geschrieben.
+        // Ohne Eintrag wird das erste Wort des Telegram-Vornamens mit PEOPLE verglichen (z. B. "Lea Bär" → Lea).
+        const TELEGRAM_USERS = {
+            "christian": "Leuby",
+        };
+
+        // Texte je Sprache: Deutsch für Telegram-Sprache "de", sonst Englisch
         const TASKS = [
-            { 
-                name: "Kitchen", icon: "🍽️", shortLabel: "KITCHEN",
-                details: ["Clean stove & oven", "Scrub the sink", "Wipe down counters", "Take out trash", "Check the fridge"] 
+            {
+                icon: "🍽️",
+                en: { name: "Kitchen", shortLabel: "KITCHEN",
+                      details: ["Mop kitchen floor", "Clean stove & oven", "Scrub the sink", "Wipe down counters", "Take out trash", "Check the fridge"] },
+                de: { name: "Küche", shortLabel: "KÜCHE",
+                      details: ["Küchenboden wischen", "Herd & Ofen putzen", "Spüle schrubben", "Arbeitsflächen abwischen", "Müll rausbringen", "Kühlschrank checken"] }
             },
-            { 
-                name: "Floors & Living Room", icon: "🧹", shortLabel: "FLOORS\n+ LIVING RM\n+ PLANTS",
-                details: ["Vacuum all floors", "Mop kitchen & bathroom", "Tidy up living room", "Water plants", "Dust surfaces"] 
+            {
+                icon: "🧹",
+                en: { name: "Floors & Living Room", shortLabel: "FLOORS\n+ LIVING RM\n+ PLANTS",
+                      details: ["Vacuum all floors", "Vacuum hallways", "Tidy up living room", "Water plants"] },
+                de: { name: "Böden & Wohnzimmer", shortLabel: "BÖDEN\n+ WOHNZI.\n+ PFLANZEN",
+                      details: ["Alle Böden saugen", "Flure saugen", "Wohnzimmer aufräumen", "Pflanzen gießen"] }
             },
-            { 
-                name: "Bathroom Upstairs", icon: "🚽", shortLabel: "BATH\n↑ (UP)",
-                details: ["Clean toilet", "Scrub sink", "Clean bathtub/shower", "Wipe mirrors", "Mop floor"] 
+            {
+                icon: "🚽",
+                en: { name: "Bathroom Upstairs", shortLabel: "BATH\n↑ (UP)",
+                      details: ["Clean toilet", "Scrub sink", "Clean bathtub/shower", "Wipe mirrors", "Mop floor"] },
+                de: { name: "Bad oben", shortLabel: "BAD\n↑ (OBEN)",
+                      details: ["Toilette putzen", "Waschbecken schrubben", "Badewanne/Dusche putzen", "Spiegel abwischen", "Boden wischen"] }
             },
-            { 
-                name: "Bathroom Downstairs", icon: "🚿", shortLabel: "BATH\n↓ (DOWN)",
-                details: ["Clean toilet", "Scrub sink", "Scrub shower", "Wipe mirrors", "Mop floor"] 
+            {
+                icon: "🚿",
+                en: { name: "Bathroom Downstairs", shortLabel: "BATH\n↓ (DOWN)",
+                      details: ["Clean toilet", "Scrub sink", "Scrub shower", "Wipe mirrors", "Mop floor"] },
+                de: { name: "Bad unten", shortLabel: "BAD\n↓ (UNTEN)",
+                      details: ["Toilette putzen", "Waschbecken schrubben", "Dusche schrubben", "Spiegel abwischen", "Boden wischen"] }
             },
-            { 
-                name: "Outside & Glass", icon: "🗑️", shortLabel: "OUTSIDE\n+ TOWELS\n+ GLASS",
-                details: ["Take out glass recycling", "Change towels", "Put out trash bins", "Sweep terrace", "Dispose of paper recycling"] 
+            {
+                icon: "🗑️",
+                en: { name: "Outside & Glass", shortLabel: "OUTSIDE\n+ TOWELS\n+ GLASS",
+                      details: ["Take out glass recycling", "Change towels", "Put out trash bins", "Sweep terrace"] },
+                de: { name: "Draußen & Glas", shortLabel: "DRAUSSEN\n+ HANDTÜCHER\n+ GLAS",
+                      details: ["Altglas wegbringen", "Handtücher wechseln", "Mülltonnen rausstellen", "Terrasse fegen"] }
             }
         ];
+
+        const UI_TEXT = {
+            en: {
+                title: "WG Cleaning Clock", week: "Week", today: "Back to today", close: "Close", locale: "en-GB",
+                hint: "Tap a task for its checklist",
+                relative: n => n === 0 ? "This week" : n === 1 ? "Next week" : n === -1 ? "Last week"
+                             : n > 0 ? `In ${n} weeks` : `${-n} weeks ago`
+            },
+            de: {
+                title: "WG Putzuhr", week: "KW", today: "Zurück zu heute", close: "Schließen", locale: "de-DE",
+                hint: "Aufgabe antippen für die Checkliste",
+                relative: n => n === 0 ? "Diese Woche" : n === 1 ? "Nächste Woche" : n === -1 ? "Letzte Woche"
+                             : n > 0 ? `In ${n} Wochen` : `Vor ${-n} Wochen`
+            }
+        };
+
+        /** Sprache aus Telegram lesen (außerhalb von Telegram: Browsersprache) */
+        function detectLanguage() {
+            const tgLang = window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code;
+            const lang = (tgLang || navigator.language || 'en').toLowerCase();
+            return lang.startsWith('de') ? 'de' : 'en';
+        }
+
+        /** Welcher Name im Plan gehört zum Telegram-Nutzer? (nur wenn als Mini-App geöffnet) */
+        function detectMe() {
+            const user = tg?.initDataUnsafe?.user;
+            if (!user) return null;
+            const first = (user.first_name || '').trim().split(/\s+/)[0].toLowerCase();
+            const byAccount = TELEGRAM_USERS[String(user.id)]
+                           || TELEGRAM_USERS[user.username?.toLowerCase()]
+                           || TELEGRAM_USERS[first];
+            if (byAccount) return byAccount;
+            return PEOPLE.find(p => p.toLowerCase() === first) || null;
+        }
+
+        const LANG = detectLanguage();
+        const T = UI_TEXT[LANG];
+        const ME = detectMe();
 
         // Referenz: KW1 2026 beginnt am Montag 29.12.2025 (12:00 UTC, DST-sicher)
         const REFERENCE_MONDAY = new Date('2025-12-29T12:00:00Z');
@@ -405,16 +514,22 @@
         // DOM-REFERENZEN
         // =====================================================
         const innerWheel   = document.getElementById('innerWheel');
+        const innerShape   = document.getElementById('innerShape');
         const outerRing    = document.getElementById('outerRing');
         const slider       = document.getElementById('weekSlider');
         const dateDisplay  = document.getElementById('dateDisplay');
         const kwBig        = document.getElementById('kwBig');
+        const weekRelative = document.getElementById('weekRelative');
         const resetBtn     = document.getElementById('resetBtn');
         const modalOverlay = document.getElementById('modalOverlay');
         const modalTitle   = document.getElementById('modalTitle');
+        const modalSub     = document.getElementById('modalSub');
         const modalIcon    = document.getElementById('modalIcon');
         const modalList    = document.getElementById('modalList');
         const modalCloseBtn = document.getElementById('modalCloseBtn');
+
+        const MIN_OFFSET = Number(slider.min);
+        const MAX_OFFSET = Number(slider.max);
 
         let currentOffset = 0;
         const count = PEOPLE.length;
@@ -439,8 +554,8 @@
         }
 
         function initInnerWheel() {
-            // Dynamischer clip-path
-            innerWheel.style.clipPath = generatePolygonPath(count);
+            // Clip-path auf eigener Ebene, damit der Schatten am Rad sichtbar bleibt
+            innerShape.style.clipPath = generatePolygonPath(count);
 
             // Trennlinien
             for (let i = 0; i < count; i++) {
@@ -453,8 +568,8 @@
             // Personen-Labels
             PEOPLE.forEach((person, i) => {
                 const el = document.createElement('div');
-                el.className = 'person-item';
-                el.textContent = person;
+                el.className = 'person-item' + (person === ME ? ' me' : '');
+                el.innerHTML = `<span>${person}</span>`;
                 el.dataset.baseAngle = i * sliceAngle;
                 innerWheel.appendChild(el);
             });
@@ -464,23 +579,25 @@
         function initTaskLabels() {
             // Offset: erstes Label oben (270° = -90°), dann im Uhrzeigersinn
             const startAngle = -90;
-            const labelRadius = 0.35; // Anteil des Radius (0 = Mitte, 0.5 = Rand)
+            // Ankerpunkt knapp außerhalb der Fünfeck-Ecke (Ecke liegt bei 0.24)
+            const labelRadius = 0.27; // Anteil des Durchmessers (0 = Mitte, 0.5 = Rand)
 
             TASKS.forEach((task, i) => {
-                const el = document.createElement('div');
+                const el = document.createElement('button');
                 el.className = 'task-label';
                 el.dataset.index = i;
-                el.innerHTML = task.shortLabel.replace(/\n/g, '<br>');
+                el.innerHTML = `<span class="task-icon">${task.icon}</span>`
+                             + task[LANG].shortLabel.replace(/\n/g, '<br>');
 
                 const angle = startAngle + i * sliceAngle;
                 const rad = angle * Math.PI / 180;
+                const cos = Math.cos(rad);
+                const sin = Math.sin(rad);
                 // Prozentuale Position relativ zum Outer Ring
-                const x = 50 + labelRadius * 100 * Math.cos(rad);
-                const y = 50 + labelRadius * 100 * Math.sin(rad);
-
-                el.style.left = `${x}%`;
-                el.style.top = `${y}%`;
-                el.style.transform = 'translate(-50%, -50%)';
+                el.style.left = `${50 + labelRadius * 100 * cos}%`;
+                el.style.top = `${50 + labelRadius * 100 * sin}%`;
+                // Label wächst vom Anker nach außen, damit es die Ecke nicht überdeckt
+                el.style.setProperty('--label-shift', `translate(${-50 + 50 * cos}%, ${-50 + 50 * sin}%)`);
 
                 el.addEventListener('click', (e) => {
                     // Nicht öffnen wenn gerade gedreht wurde
@@ -539,6 +656,15 @@
             return { week: weekNo, year: d.getUTCFullYear() };
         }
 
+        /** Passt zur Drehung des Rads: Person i steht bei Aufgabe (i + weeksDiff) mod n */
+        function personForTask(taskIndex, weeksDiff) {
+            return PEOPLE[(((taskIndex - weeksDiff) % count) + count) % count];
+        }
+
+        function taskForPerson(name, weeksDiff) {
+            return (((PEOPLE.indexOf(name) + weeksDiff) % count) + count) % count;
+        }
+
         // =====================================================
         // UPDATE – Rad drehen und Anzeige aktualisieren
         // =====================================================
@@ -547,10 +673,12 @@
             const info = getTargetWeekInfo(currentOffset);
 
             // Anzeige
-            kwBig.textContent = `KW ${info.isoWeek}`;
+            kwBig.textContent = `${T.week} ${info.isoWeek}`;
+            weekRelative.textContent = T.relative(currentOffset);
+            resetBtn.classList.toggle('hidden', currentOffset === 0);
             const opts = { day: '2-digit', month: '2-digit' };
-            dateDisplay.textContent = 
-                `${info.targetMonday.toLocaleDateString('de-DE', opts)} - ${info.targetSunday.toLocaleDateString('de-DE', opts)}`;
+            dateDisplay.textContent =
+                `${info.targetMonday.toLocaleDateString(T.locale, opts)} - ${info.targetSunday.toLocaleDateString(T.locale, opts)}`;
 
             // Rotation (eine Scheibe pro Woche = sliceAngle Grad)
             const rotationAngle = info.weeksDiff * sliceAngle;
@@ -559,7 +687,13 @@
             // Personen-Text gegenrotieren
             document.querySelectorAll('.person-item').forEach(el => {
                 const base = parseFloat(el.dataset.baseAngle);
-                el.style.transform = `rotate(${base}deg) translate(0, -${170}%) rotate(${-base - rotationAngle}deg)`;
+                el.style.transform = `rotate(${base}deg) translate(0, calc(-1 * var(--person-radius))) rotate(${-base - rotationAngle}deg)`;
+            });
+
+            // Eigene Aufgabe markieren
+            const myTask = ME ? taskForPerson(ME, info.weeksDiff) : -1;
+            document.querySelectorAll('.task-label').forEach(el => {
+                el.classList.toggle('mine', Number(el.dataset.index) === myTask);
             });
         }
 
@@ -567,18 +701,23 @@
         // EVENT-HANDLING
         // =====================================================
 
-        // Slider: kürzere Transition beim Schieben, längere beim Reset
         function setWheelSpeed(speed) {
             innerWheel.style.setProperty('--wheel-speed', speed);
         }
 
+        function goToOffset(offset) {
+            const clamped = Math.max(MIN_OFFSET, Math.min(MAX_OFFSET, offset));
+            if (clamped === currentOffset) return;
+            currentOffset = clamped;
+            slider.value = clamped;
+            haptic();
+            update();
+        }
+
+        // Slider: kürzere Transition beim Schieben, längere beim Reset
         slider.addEventListener('mousedown',  () => setWheelSpeed('0.25s'));
         slider.addEventListener('touchstart', () => setWheelSpeed('0.25s'), { passive: true });
-
-        slider.addEventListener('input', () => {
-            currentOffset = parseInt(slider.value);
-            update();
-        });
+        slider.addEventListener('input', () => goToOffset(parseInt(slider.value)));
 
         function endSlide() {
             setWheelSpeed('0.6s');
@@ -588,9 +727,7 @@
 
         resetBtn.addEventListener('click', () => {
             setWheelSpeed('0.6s');
-            currentOffset = 0;
-            slider.value = 0;
-            update();
+            goToOffset(0);
         });
 
         // =====================================================
@@ -599,7 +736,8 @@
         const wheelStage = document.querySelector('.wheel-stage');
         let isDragging = false;
         let wasDragged = false;
-        let dragStartAngle = 0;
+        let lastAngle = 0;
+        let accumulatedAngle = 0;
         let dragStartOffset = 0;
 
         /** Winkel in Grad vom Mittelpunkt des Rads zum Pointer */
@@ -613,7 +751,8 @@
         function dragStart(clientX, clientY) {
             isDragging = true;
             wasDragged = false;
-            dragStartAngle = getAngleFromCenter(clientX, clientY);
+            lastAngle = getAngleFromCenter(clientX, clientY);
+            accumulatedAngle = 0;
             dragStartOffset = currentOffset;
             setWheelSpeed('0.15s');
             wheelStage.classList.add('dragging');
@@ -621,19 +760,17 @@
 
         function dragMove(clientX, clientY) {
             if (!isDragging) return;
-            const currentAngle = getAngleFromCenter(clientX, clientY);
-            let delta = currentAngle - dragStartAngle;
+            // Winkel schrittweise aufsummieren, damit auch mehr als eine halbe Umdrehung am Stück funktioniert
+            const angle = getAngleFromCenter(clientX, clientY);
+            let delta = angle - lastAngle;
             if (delta > 180) delta -= 360;
             if (delta < -180) delta += 360;
-            const weekDelta = Math.round(delta / sliceAngle);
+            accumulatedAngle += delta;
+            lastAngle = angle;
+
+            const weekDelta = Math.round(accumulatedAngle / sliceAngle);
             if (weekDelta !== 0) wasDragged = true;
-            const newOffset = dragStartOffset + weekDelta;
-            const clamped = Math.max(-10, Math.min(10, newOffset));
-            if (clamped !== currentOffset) {
-                currentOffset = clamped;
-                slider.value = currentOffset;
-                update();
-            }
+            goToOffset(dragStartOffset + weekDelta);
         }
 
         function dragEnd() {
@@ -669,10 +806,13 @@
         // --- MODAL ---
         function openModal(index) {
             const task = TASKS[index];
-            modalTitle.textContent = task.name;
+            const text = task[LANG];
+            const info = getTargetWeekInfo(currentOffset);
+            modalTitle.textContent = text.name;
             modalIcon.textContent = task.icon;
+            modalSub.textContent = `${T.relative(currentOffset)}: ${personForTask(index, info.weeksDiff)}`;
             modalList.innerHTML = '';
-            task.details.forEach(detail => {
+            text.details.forEach(detail => {
                 const li = document.createElement('li');
                 li.textContent = detail;
                 modalList.appendChild(li);
@@ -697,6 +837,15 @@
         // =====================================================
         // INIT
         // =====================================================
+        function applyLanguage() {
+            document.documentElement.lang = LANG;
+            document.title = T.title;
+            resetBtn.textContent = T.today;
+            modalCloseBtn.textContent = T.close;
+            document.getElementById('tapHint').textContent = T.hint;
+        }
+
+        applyLanguage();
         initInnerWheel();
         initTaskLabels();
         update();
