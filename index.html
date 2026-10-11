@@ -20,7 +20,8 @@
             --paper-yellow: #FFC107;
             --paper-green: #8BC34A;
             --marker-red: #D32F2F;
-            --me-pink: #E91E63; /* Markierung des eigenen Namens und der eigenen Aufgabe */
+            --me-pink: #FF2E93; /* Markierung des eigenen Namens und der eigenen Aufgabe */
+            --me-pink-soft: #FFE3F1;
             --text-color: #3e2723;
             --card-bg: #fffdf6;
             --wheel-size: min(90vw, 420px);
@@ -160,7 +161,11 @@
         .task-label:active .task-icon { background: white; box-shadow: none; }
         /* Eigene Aufgabe (Telegram-Nutzer): pink markiert */
         .task-label.mine { color: var(--me-pink); }
-        .task-label.mine .task-icon { border-color: var(--me-pink); }
+        .task-label.mine .task-icon {
+            border: 3px solid var(--me-pink);
+            background: var(--me-pink-soft);
+            box-shadow: 0 0 0 3px rgba(255, 46, 147, 0.25);
+        }
 
         .inner-wheel {
             position: absolute;
@@ -222,7 +227,10 @@
         /* Eigener Name (Telegram-Nutzer): pink umkringelt */
         .person-item.me span {
             color: var(--me-pink);
-            border: 2px solid var(--me-pink);
+            background: var(--me-pink-soft);
+            border: 3px solid var(--me-pink);
+            box-shadow: 0 0 0 3px rgba(255, 46, 147, 0.25);
+            padding: 1px 7px;
             border-radius: 55% 45% 50% 40% / 45% 55% 40% 50%;
         }
 
@@ -927,7 +935,7 @@
         });
 
         // =====================================================
-        // ZWERGSEIDENHUHN – läuft ab und zu herum, pickt, antippen = Federn + Flucht
+        // ZWERGSEIDENHUHN – läuft ständig herum, pickt, antippen = Federn + Flucht
         // =====================================================
         const FEATHER_SVG = '<svg viewBox="0 0 20 12"><path d="M2 10 Q8 0 18 2 Q12 10 2 10 Z" fill="white" stroke="#3e2723" stroke-width="1.2" stroke-linejoin="round"/><path d="M1 11 Q10 6 17 3" fill="none" stroke="#3e2723" stroke-width="1" stroke-linecap="round"/></svg>';
 
@@ -936,7 +944,7 @@
             const WIDTH = 58, HEIGHT = 53;
             const SPEED = 45;          // Pixel pro Sekunde
             const RUN_FACTOR = 3.5;    // so viel schneller nach dem Antippen
-            let x = 0, y = 0, dir = 1, target = null, stopsLeft = 0, state = 'hidden', boostUntil = 0, last = 0;
+            let x = 0, y = 0, dir = 1, target = null, state = 'hidden', boostUntil = 0, last = 0;
 
             const rand = (min, max) => min + Math.random() * (max - min);
 
@@ -945,10 +953,6 @@
                     x: rand(0, window.innerWidth - WIDTH),
                     y: rand(60, window.innerHeight - HEIGHT - 4)
                 };
-            }
-
-            function exitTarget() {
-                return { x: x < window.innerWidth / 2 ? -WIDTH - 10 : window.innerWidth + 10, y, exit: true };
             }
 
             function setWalking() {
@@ -962,7 +966,6 @@
                 const fromLeft = Math.random() < 0.5;
                 x = fromLeft ? -WIDTH : window.innerWidth;
                 y = rand(60, window.innerHeight - HEIGHT - 4);
-                stopsLeft = Math.floor(rand(3, 7));
                 target = randomTarget();
                 state = 'walking';
                 walker.classList.add('active', 'walking');
@@ -970,22 +973,14 @@
                 requestAnimationFrame(step);
             }
 
-            /** Ziel erreicht: nächstes Ziel wählen, manchmal vorher picken. false = Bildschirm verlassen */
+            /** Ziel erreicht: nächstes Ziel wählen, manchmal vorher picken */
             function arrive() {
-                if (target.exit) {
-                    state = 'hidden';
-                    walker.classList.remove('active', 'walking', 'pecking', 'running');
-                    setTimeout(enter, rand(20000, 45000));
-                    return false;
-                }
-                stopsLeft--;
-                target = stopsLeft > 0 ? randomTarget() : exitTarget();
+                target = randomTarget();
                 if (Math.random() < 0.6) {
                     state = 'pecking';
                     walker.classList.replace('walking', 'pecking');
                     setTimeout(() => { if (state === 'pecking') setWalking(); }, 1500);
                 }
-                return true;
             }
 
             function step(now) {
@@ -1000,7 +995,7 @@
                     const dist = Math.hypot(dx, dy);
                     if (dist <= speed * dt + 1) {
                         x = target.x; y = target.y;
-                        if (!arrive()) return;
+                        arrive();
                     } else {
                         x += dx / dist * speed * dt;
                         y += dy / dist * speed * dt;
@@ -1040,11 +1035,11 @@
                 dropFeathers();
                 try { tg?.HapticFeedback?.impactOccurred('light'); } catch (err) {}
                 boostUntil = performance.now() + 1600;
-                if (!target.exit) target = randomTarget();
+                target = randomTarget();
                 setWalking();
             });
 
-            setTimeout(enter, 3000);
+            setTimeout(enter, 1500);
         }
 
         // =====================================================

@@ -18,7 +18,7 @@ Die ganze App ist eine einzige Datei: [`index.html`](index.html). Es gibt keinen
 
 Unter der Kalenderwoche steht, wie weit die angezeigte Woche weg ist („Diese Woche“, „Vor 3 Wochen“ …).
 
-**Das Zwergseidenhuhn:** Ab und zu läuft ein gekritzeltes Zwergseidenhuhn durchs Bild, pickt hier und da und verschwindet wieder (Code: `startSilkie()` in `index.html`). Wer am Handy „Bewegung reduzieren“ eingeschaltet hat, sieht es nicht.
+**Das Zwergseidenhuhn:** Ein gekritzeltes Zwergseidenhuhn läuft ständig durchs Bild und pickt hier und da (Code: `startSilkie()` in `index.html`). Wer am Handy „Bewegung reduzieren“ eingeschaltet hat, sieht es nicht.
 
 ## Telegram-Funktionen
 
