@@ -20,6 +20,7 @@
             --paper-yellow: #FFC107;
             --paper-green: #8BC34A;
             --marker-red: #D32F2F;
+            --me-pink: #E91E63; /* Markierung des eigenen Namens und der eigenen Aufgabe */
             --text-color: #3e2723;
             --card-bg: #fffdf6;
             --wheel-size: min(90vw, 420px);
@@ -134,15 +135,32 @@
         }
         .task-label:hover { transform: var(--label-shift) scale(1.06); }
         .task-label:active { transform: var(--label-shift) scale(0.94); }
+        /* Icon als runder Aufkleber-Knopf: zeigt auch ohne Hover, dass man tippen kann */
         .task-icon {
             display: block;
-            font-size: 1.5em;
-            line-height: 1.15;
-            transition: transform 0.2s;
+            width: 1.9em;
+            height: 1.9em;
+            margin: 0 auto 3px;
+            font-size: 1.35em;
+            line-height: 1.85em;
+            border-radius: 50% 45% 52% 48% / 48% 52% 45% 50%;
+            background: rgba(255, 255, 255, 0.6);
+            border: 2px dashed rgba(62, 39, 35, 0.4);
+            box-shadow: 1px 2px 0 rgba(62, 39, 35, 0.15);
+            transition: transform 0.2s, background 0.2s;
+            /* Einmaliges Wackeln beim Öffnen, nacheinander (Verzögerung per JS) */
+            animation: icon-wiggle 0.7s ease-in-out var(--wiggle-delay, 0.6s) 1;
+        }
+        @keyframes icon-wiggle {
+            0%, 100% { transform: rotate(0); }
+            25% { transform: rotate(-14deg) scale(1.15); }
+            60% { transform: rotate(10deg) scale(1.1); }
         }
         .task-label:hover .task-icon { transform: rotate(-8deg); }
-        /* Eigene Aufgabe (Telegram-Nutzer): rot markiert */
-        .task-label.mine { color: var(--marker-red); }
+        .task-label:active .task-icon { background: white; box-shadow: none; }
+        /* Eigene Aufgabe (Telegram-Nutzer): pink markiert */
+        .task-label.mine { color: var(--me-pink); }
+        .task-label.mine .task-icon { border-color: var(--me-pink); }
 
         .inner-wheel {
             position: absolute;
@@ -201,10 +219,10 @@
             pointer-events: none;
         }
         .person-item span { padding: 0 5px; }
-        /* Eigener Name (Telegram-Nutzer): mit Marker umkringelt */
+        /* Eigener Name (Telegram-Nutzer): pink umkringelt */
         .person-item.me span {
-            color: var(--marker-red);
-            border: 2px solid var(--marker-red);
+            color: var(--me-pink);
+            border: 2px solid var(--me-pink);
             border-radius: 55% 45% 50% 40% / 45% 55% 40% 50%;
         }
 
@@ -351,6 +369,60 @@
             cursor: pointer;
             box-shadow: 3px 3px 0 rgba(0,0,0,0.15);
         }
+        /* --- ZWERGSEIDENHUHN: läuft ab und zu durchs Bild, antippen lässt es Federn lassen --- */
+        .silkie-walker {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 58px;
+            z-index: 50; /* unter dem Modal */
+            cursor: pointer;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            display: none;
+        }
+        .silkie-walker.active { display: block; }
+        .silkie {
+            display: block;
+            width: 100%;
+            transform: scaleX(var(--dir, 1)); /* schaut in Laufrichtung */
+            overflow: visible;
+        }
+        .silkie .leg { transform-box: fill-box; transform-origin: 50% 0; }
+        .silkie .head { transform-origin: 64px 46px; }
+        .walking .silkie { animation: silkie-bob 0.32s ease-in-out infinite alternate; }
+        .walking .leg-back { animation: silkie-step 0.32s ease-in-out infinite alternate; }
+        .walking .leg-front { animation: silkie-step 0.32s ease-in-out infinite alternate-reverse; }
+        .pecking .head { animation: silkie-peck 0.45s ease-in-out 3; }
+        /* Erschrocken: schnelle Beine */
+        .running .silkie, .running .leg-back, .running .leg-front { animation-duration: 0.12s; }
+
+        .feather {
+            position: fixed;
+            width: 16px;
+            z-index: 51;
+            pointer-events: none;
+            animation: feather-fall 1.8s ease-out forwards;
+        }
+        .feather svg { display: block; width: 100%; overflow: visible; }
+        @keyframes feather-fall {
+            0%   { transform: translate(0, 0) rotate(0); opacity: 1; }
+            30%  { transform: translate(calc(var(--dx) * 0.5), -14px) rotate(calc(var(--rot) * 0.4)); opacity: 1; }
+            100% { transform: translate(var(--dx), var(--fall)) rotate(var(--rot)); opacity: 0; }
+        }
+        @keyframes silkie-bob {
+            from { transform: scaleX(var(--dir, 1)) translateY(0); }
+            to   { transform: scaleX(var(--dir, 1)) translateY(-2px); }
+        }
+        @keyframes silkie-step {
+            from { transform: rotate(-14deg); }
+            to   { transform: rotate(14deg); }
+        }
+        @keyframes silkie-peck {
+            0%, 100% { transform: rotate(0); }
+            50% { transform: rotate(38deg) translate(2px, 6px); }
+        }
+
         .modal-close:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(0,0,0,0.15); }
     </style>
 </head>
@@ -387,6 +459,26 @@
             <span style="font-size: 1rem;">+10</span>
         </div>
         <button class="reset-btn" id="resetBtn">Zurück zu heute</button>
+    </div>
+
+    <div class="silkie-walker" id="silkieWalker">
+        <svg class="silkie" viewBox="0 0 110 100" aria-hidden="true">
+        <g fill="white" stroke="#3e2723" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <g class="leg leg-back"><path d="M40 68 L38 88 M38 88 l-6 2 M38 88 l3 3 M38 88 l-2 4" fill="none"/><path d="M36 74 q-5 2 -4 7 M40 76 q4 3 2 7" fill="none" stroke-width="1.6"/></g>
+          <g class="leg leg-front"><path d="M54 68 L56 88 M56 88 l6 2 M56 88 l-3 3 M56 88 l2 4" fill="none"/><path d="M53 74 q-4 3 -3 7 M57 75 q5 2 4 7" fill="none" stroke-width="1.6"/></g>
+          <path d="M31.8 40.0 A5.3 5.3 0 0 1 26.4 48.8 A5.2 5.2 0 0 1 17.5 51.9 A5.4 5.4 0 0 1 9.8 45.4 A5.5 5.5 0 0 1 10.4 34.9 A5.3 5.3 0 0 1 17.5 28.2 A4.9 4.9 0 0 1 26.2 31.4 A5.3 5.3 0 0 1 31.8 40.0 Z"/>
+          <path d="M72.6 52.0 A4.6 4.6 0 0 1 69.2 60.4 A5.5 5.5 0 0 1 61.5 67.9 A6.9 6.9 0 0 1 49.1 69.8 A7.3 7.3 0 0 1 36.4 69.8 A6.4 6.4 0 0 1 26.0 64.4 A5.1 5.1 0 0 1 20.8 56.3 A5.1 5.1 0 0 1 19.8 47.4 A5.0 5.0 0 0 1 26.6 40.1 A6.4 6.4 0 0 1 36.5 34.4 A6.6 6.6 0 0 1 49.1 34.2 A6.1 6.1 0 0 1 60.8 37.2 A5.5 5.5 0 0 1 69.7 43.3 A4.8 4.8 0 0 1 72.6 52.0 Z"/>
+          <path d="M53.7 52.0 A4.7 4.7 0 0 1 48.2 58.4 A6.0 6.0 0 0 1 36.6 57.1 A4.3 4.3 0 0 1 30.1 52.0 A4.4 4.4 0 0 1 36.4 46.6 A6.3 6.3 0 0 1 47.5 46.7 A4.1 4.1 0 0 1 53.7 52.0 Z" stroke-width="1.8"/>
+          <g class="head">
+            <path d="M76.7 38.0 A5.3 5.3 0 0 1 72.5 46.2 A4.4 4.4 0 0 1 63.9 47.2 A4.5 4.5 0 0 1 56.8 42.4 A4.9 4.9 0 0 1 56.9 33.6 A4.7 4.7 0 0 1 63.6 27.4 A5.0 5.0 0 0 1 72.6 29.8 A4.6 4.6 0 0 1 76.7 38.0 Z"/>
+            <path d="M87.4 26.0 A4.9 4.9 0 0 1 84.4 34.1 A4.8 4.8 0 0 1 76.3 38.0 A5.1 5.1 0 0 1 67.0 37.2 A4.4 4.4 0 0 1 62.2 30.0 A4.6 4.6 0 0 1 61.3 21.7 A4.8 4.8 0 0 1 67.4 15.4 A5.2 5.2 0 0 1 76.3 14.0 A4.9 4.9 0 0 1 83.9 18.4 A4.4 4.4 0 0 1 87.4 26.0 Z"/>
+            <path d="M70 30 q8 -4 15 2 q2 8 -6 11 q-9 1 -10 -6 z" fill="#4b3f5e"/>
+            <path d="M84 33 l7 2.5 l-6 3 z" fill="#9aa3b5" stroke-width="1.6"/>
+            <circle cx="78" cy="34" r="2.6" fill="white" stroke="none"/>
+            <circle cx="78.6" cy="34.2" r="1.4" fill="#1b1b1b" stroke="none"/>
+            <path d="M66 20 q-3 -6 2 -9 M74 15 q1 -6 6 -6 M82 18 q4 -4 8 -1" fill="none" stroke-width="1.6"/>
+          </g>
+        </g></svg>
     </div>
 
     <div class="modal-overlay" id="modalOverlay">
@@ -586,7 +678,7 @@
                 const el = document.createElement('button');
                 el.className = 'task-label';
                 el.dataset.index = i;
-                el.innerHTML = `<span class="task-icon">${task.icon}</span>`
+                el.innerHTML = `<span class="task-icon" style="--wiggle-delay: ${0.6 + i * 0.15}s">${task.icon}</span>`
                              + task[LANG].shortLabel.replace(/\n/g, '<br>');
 
                 const angle = startAngle + i * sliceAngle;
@@ -835,6 +927,127 @@
         });
 
         // =====================================================
+        // ZWERGSEIDENHUHN – läuft ab und zu herum, pickt, antippen = Federn + Flucht
+        // =====================================================
+        const FEATHER_SVG = '<svg viewBox="0 0 20 12"><path d="M2 10 Q8 0 18 2 Q12 10 2 10 Z" fill="white" stroke="#3e2723" stroke-width="1.2" stroke-linejoin="round"/><path d="M1 11 Q10 6 17 3" fill="none" stroke="#3e2723" stroke-width="1" stroke-linecap="round"/></svg>';
+
+        function startSilkie() {
+            const walker = document.getElementById('silkieWalker');
+            const WIDTH = 58, HEIGHT = 53;
+            const SPEED = 45;          // Pixel pro Sekunde
+            const RUN_FACTOR = 3.5;    // so viel schneller nach dem Antippen
+            let x = 0, y = 0, dir = 1, target = null, stopsLeft = 0, state = 'hidden', boostUntil = 0, last = 0;
+
+            const rand = (min, max) => min + Math.random() * (max - min);
+
+            function randomTarget() {
+                return {
+                    x: rand(0, window.innerWidth - WIDTH),
+                    y: rand(60, window.innerHeight - HEIGHT - 4)
+                };
+            }
+
+            function exitTarget() {
+                return { x: x < window.innerWidth / 2 ? -WIDTH - 10 : window.innerWidth + 10, y, exit: true };
+            }
+
+            function setWalking() {
+                if (state === 'hidden') return;
+                state = 'walking';
+                walker.classList.remove('pecking');
+                walker.classList.add('walking');
+            }
+
+            function enter() {
+                const fromLeft = Math.random() < 0.5;
+                x = fromLeft ? -WIDTH : window.innerWidth;
+                y = rand(60, window.innerHeight - HEIGHT - 4);
+                stopsLeft = Math.floor(rand(3, 7));
+                target = randomTarget();
+                state = 'walking';
+                walker.classList.add('active', 'walking');
+                last = performance.now();
+                requestAnimationFrame(step);
+            }
+
+            /** Ziel erreicht: nächstes Ziel wählen, manchmal vorher picken. false = Bildschirm verlassen */
+            function arrive() {
+                if (target.exit) {
+                    state = 'hidden';
+                    walker.classList.remove('active', 'walking', 'pecking', 'running');
+                    setTimeout(enter, rand(20000, 45000));
+                    return false;
+                }
+                stopsLeft--;
+                target = stopsLeft > 0 ? randomTarget() : exitTarget();
+                if (Math.random() < 0.6) {
+                    state = 'pecking';
+                    walker.classList.replace('walking', 'pecking');
+                    setTimeout(() => { if (state === 'pecking') setWalking(); }, 1500);
+                }
+                return true;
+            }
+
+            function step(now) {
+                const dt = Math.min((now - last) / 1000, 0.1);
+                last = now;
+                const running = now < boostUntil;
+                walker.classList.toggle('running', running);
+
+                if (state === 'walking') {
+                    const speed = SPEED * (running ? RUN_FACTOR : 1);
+                    const dx = target.x - x, dy = target.y - y;
+                    const dist = Math.hypot(dx, dy);
+                    if (dist <= speed * dt + 1) {
+                        x = target.x; y = target.y;
+                        if (!arrive()) return;
+                    } else {
+                        x += dx / dist * speed * dt;
+                        y += dy / dist * speed * dt;
+                        // Blickrichtung nur bei deutlicher Seitwärtsbewegung wechseln
+                        if (Math.abs(dx) > 4) {
+                            dir = dx > 0 ? 1 : -1;
+                            walker.style.setProperty('--dir', dir);
+                        }
+                    }
+                }
+                walker.style.transform = `translate(${x}px, ${y}px)`;
+                requestAnimationFrame(step);
+            }
+
+            function dropFeathers() {
+                const cx = x + WIDTH / 2, cy = y + HEIGHT / 2;
+                for (let i = 0; i < 7; i++) {
+                    const f = document.createElement('div');
+                    f.className = 'feather';
+                    f.innerHTML = FEATHER_SVG;
+                    f.style.left = `${cx + rand(-18, 10)}px`;
+                    f.style.top = `${cy + rand(-14, 10)}px`;
+                    f.style.setProperty('--dx', `${rand(-45, 45)}px`);
+                    f.style.setProperty('--rot', `${rand(-200, 200)}deg`);
+                    f.style.setProperty('--fall', `${rand(40, 90)}px`);
+                    f.style.animationDelay = `${rand(0, 0.15)}s`;
+                    f.addEventListener('animationend', () => f.remove());
+                    document.body.appendChild(f);
+                }
+            }
+
+            // Antippen (Maus und Touch): Federn lassen und kurz davonrennen
+            walker.addEventListener('pointerdown', (e) => {
+                if (state === 'hidden') return;
+                e.preventDefault();
+                e.stopPropagation();
+                dropFeathers();
+                try { tg?.HapticFeedback?.impactOccurred('light'); } catch (err) {}
+                boostUntil = performance.now() + 1600;
+                if (!target.exit) target = randomTarget();
+                setWalking();
+            });
+
+            setTimeout(enter, 3000);
+        }
+
+        // =====================================================
         // INIT
         // =====================================================
         function applyLanguage() {
@@ -849,6 +1062,7 @@
         initInnerWheel();
         initTaskLabels();
         update();
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) startSilkie();
     </script>
 </body>
 </html>
