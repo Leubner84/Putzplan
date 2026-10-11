@@ -24,7 +24,7 @@ Unter der Kalenderwoche steht, wie weit die angezeigte Woche weg ist („Diese W
 
 - **Sprache:** Ist Telegram auf Deutsch eingestellt, erscheint alles auf Deutsch, bei jeder anderen Sprache auf Englisch. Außerhalb von Telegram gilt die Browsersprache.
 - **Eigener Name markiert:** Wer die App öffnet, sieht seinen Namen auf dem Rad pink umkringelt und seine Aufgabe pink markiert.
-- **Vibrieren** beim Wochenwechsel. Wischen am Rad schließt die Mini-App nicht.
+- **Vibrieren** beim Wochenwechsel und beim Antippen des Huhns. Wischen am Rad schließt die Mini-App nicht.
 
 **Wichtig:** Telegram verrät der App nur dann, wer sie öffnet, wenn sie **als Mini-App über einen Bot** gestartet wird (Menü-Button des Bots oder Link `t.me/<bot>/<app>`). Als normaler Link im Chat geöffnet, funktioniert alles, nur die Markierung des eigenen Namens fehlt.
 
@@ -78,6 +78,19 @@ Die Reihenfolge entspricht den Positionen am Rad im Uhrzeigersinn, beginnend obe
 
 Buttons, Hinweise und „Vor X Wochen“ für beide Sprachen.
 
+### Farben
+
+Die Farben stehen oben im `<style>`-Teil unter `:root`:
+
+| Variable | Farbe | Wofür |
+|---|---|---|
+| `--paper-yellow` | `#FFC107` | Gelber Ring, Knöpfe |
+| `--paper-green` | `#8BC34A` | Grünes Fünfeck |
+| `--marker-red` | `#D32F2F` | Zeiger, KW-Anzeige, Popup-Rahmen |
+| `--me-pink` | `#FF2E93` | Rahmen und Schrift für den eigenen Namen und die eigene Aufgabe |
+| `--me-pink-soft` | `#FFE3F1` | Zartrosa Hintergrund dahinter |
+| `--text-color` | `#3e2723` | Schrift |
+
 ## Wie die Rotation berechnet wird
 
 - Referenz ist **Montag, 29.12.2025** (KW 1/2026), `REFERENCE_MONDAY`. Ab dort wird gezählt, wie viele Wochen vergangen sind.
@@ -111,6 +124,14 @@ git add index.html
 git commit -m "Kurze Beschreibung der Änderung"
 git push
 ```
+
+### Telegram zeigt noch die alte Version?
+
+GitHub Pages erlaubt, die Seite bis zu 10 Minuten zwischenzuspeichern; die Telegram-App hält Mini-Apps oft noch länger im Speicher. Dann hilft:
+
+1. Mini-App ganz schließen (nicht nur minimieren) und neu öffnen.
+2. In Telegram: **Einstellungen → Daten und Speicher → Speichernutzung → Cache leeren**.
+3. Dauerhaft: In den Bot-Einstellungen an die Web-App-Adresse eine Versionsnummer hängen, z. B. `https://leubner84.github.io/Putzplan/?v=3`, und sie bei jedem Update erhöhen. Dann lädt Telegram die Seite garantiert neu.
 
 ## Bekannte Grenzen
 
